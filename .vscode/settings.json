@@ -1,0 +1,13 @@
+{
+    "swift.swiftSDK": "/Applications/Xcode-16.4.0.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk",
+    "swift.sourcekit-lsp.serverArguments": [
+        "-Xswiftc",
+        "-sdk",
+        "-Xswiftc",
+        "/Applications/Xcode-16.4.0.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk",
+        "-Xswiftc",
+        "-target",
+        "-Xswiftc",
+        "arm64-apple-ios18.1-simulator"
+    ]
+}

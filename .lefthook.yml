@@ -1,0 +1,6 @@
+pre-commit:
+  commands:
+    swift-format:
+      run: swift-format -ri Sources Tests
+      glob: "*.swift"
+      stage_fixed: true

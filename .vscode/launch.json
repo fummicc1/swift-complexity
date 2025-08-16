@@ -1,0 +1,40 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:swift-complexity}",
+            "name": "Debug swift-complexity",
+            "program": "${workspaceFolder:swift-complexity}/.build/debug/swift-complexity",
+            "preLaunchTask": "swift: Build Debug swift-complexity"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:swift-complexity}",
+            "name": "Release swift-complexity",
+            "program": "${workspaceFolder:swift-complexity}/.build/release/swift-complexity",
+            "preLaunchTask": "swift: Build Release swift-complexity"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:swift-complexity}",
+            "name": "Debug SwiftComplexity",
+            "program": "${workspaceFolder:swift-complexity}/.build/debug/SwiftComplexity",
+            "preLaunchTask": "swift: Build Debug SwiftComplexity"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:swift-complexity}",
+            "name": "Release SwiftComplexity",
+            "program": "${workspaceFolder:swift-complexity}/.build/release/SwiftComplexity",
+            "preLaunchTask": "swift: Build Release SwiftComplexity"
+        }
+    ]
+}
