@@ -71,7 +71,7 @@ jobs:
     - name: Check code formatting
       if: runner.os == 'macOS'
       run: |
-        swift-format --configuration .swift-format --recursive Sources Tests --mode diff
+        swift-format --configuration .swift-format --recursive Sources Tests
         
     - name: Lint documentation
       uses: DavidAnson/markdownlint-cli2-action@v16

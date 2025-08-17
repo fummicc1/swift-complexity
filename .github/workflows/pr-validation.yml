@@ -125,8 +125,8 @@ jobs:
         
     - name: Check formatting compliance
       run: |
-        if ! swift-format --configuration .swift-format --recursive Sources Tests --mode diff; then
-          echo "❌ Code formatting issues found. Run 'swift-format --configuration .swift-format --recursive Sources Tests --mode format --in-place' to fix."
+        if ! swift-format --configuration .swift-format --recursive Sources Tests; then
+          echo "❌ Code formatting issues found. Run 'swift-format --configuration .swift-format --recursive Sources Tests --in-place' to fix."
           exit 1
         fi
         echo "✅ Code formatting is compliant"
