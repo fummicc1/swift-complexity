@@ -54,10 +54,32 @@ jobs:
         echo "Version: $VERSION"
         echo "Is pre-release: $IS_PRERELEASE"
         
-    - name: Setup Swift with Swiftly
-      uses: vapor/swiftly-action@v0.2
+    - name: Setup Xcode
+      if: runner.os == 'macOS'
+      uses: maxim-lobanov/setup-xcode@v1
       with:
-        toolchain: "6.1"
+        xcode-version: '16.4'
+        
+    - name: Setup Swift
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          # Install dependencies for Swiftly
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev
+          
+          # Install Swiftly
+          curl -L https://swift-server.github.io/swiftly/swiftly-install.sh | bash
+          source ~/.local/share/swiftly/env.sh
+          
+          # Install Swift
+          swiftly install 6.1
+          swiftly use 6.1
+        else
+          # macOS - use Xcode's Swift
+          echo "Using Xcode's Swift on macOS"
+          xcode-select --print-path
+        fi
+        swift --version
         
     - name: Build and test
       run: |
@@ -85,10 +107,32 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup Swift with Swiftly
-      uses: vapor/swiftly-action@v0.2
+    - name: Setup Xcode
+      if: runner.os == 'macOS'
+      uses: maxim-lobanov/setup-xcode@v1
       with:
-        toolchain: "6.1"
+        xcode-version: '16.4'
+        
+    - name: Setup Swift
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          # Install dependencies for Swiftly
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev
+          
+          # Install Swiftly
+          curl -L https://swift-server.github.io/swiftly/swiftly-install.sh | bash
+          source ~/.local/share/swiftly/env.sh
+          
+          # Install Swift
+          swiftly install 6.1
+          swiftly use 6.1
+        else
+          # macOS - use Xcode's Swift
+          echo "Using Xcode's Swift on macOS"
+          xcode-select --print-path
+        fi
+        swift --version
         
     - name: Build for ${{ matrix.platform }}-${{ matrix.arch }}
       run: |

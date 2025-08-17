@@ -97,10 +97,17 @@ jobs:
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         
-    - name: Setup Swift with Swiftly
-      uses: vapor/swiftly-action@v0.2
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
       with:
-        toolchain: "6.1"
+        xcode-version: '16.4'
+        
+    - name: Setup Swift
+      run: |
+        # macOS - use Xcode's Swift
+        echo "Using Xcode's Swift on macOS"
+        xcode-select --print-path
+        swift --version
         
     - name: Cache Swift packages
       uses: actions/cache@v4
@@ -165,10 +172,17 @@ jobs:
       with:
         ref: ${{ github.base_ref }}
         
-    - name: Setup Swift with Swiftly
-      uses: vapor/swiftly-action@v0.2
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
       with:
-        toolchain: "6.1"
+        xcode-version: '16.4'
+        
+    - name: Setup Swift
+      run: |
+        # macOS - use Xcode's Swift
+        echo "Using Xcode's Swift on macOS"
+        xcode-select --print-path
+        swift --version
         
     - name: Build baseline
       run: |
