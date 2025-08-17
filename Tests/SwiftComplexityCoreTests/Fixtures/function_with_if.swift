@@ -3,7 +3,7 @@
 // Expected Cognitive Complexity: 1 (if statement)
 
 func functionWithIf(value: Int) {
-  if value > 0 {
-    print("Positive")
-  }
+    if value > 0 {
+        print("Positive")
+    }
 }

@@ -4,5 +4,5 @@
 // Signature should contain: testFunction(param: String)
 
 func testFunction(param: String) -> Int {
-  return param.count
+    return param.count
 }
