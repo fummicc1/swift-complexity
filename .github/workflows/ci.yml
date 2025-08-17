@@ -114,6 +114,9 @@ jobs:
     name: Self Complexity Analysis
     runs-on: macos-15
     needs: [test]
+    permissions:
+      contents: read
+      pull-requests: write
     
     steps:
     - name: Checkout code
