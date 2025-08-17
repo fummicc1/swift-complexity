@@ -244,21 +244,6 @@ jobs:
           artifacts/*.sha256
         generate_release_notes: true
 
-  homebrew-update:
-    name: Update Homebrew Formula
-    runs-on: ubuntu-latest
-    needs: [validate, create-release]
-    if: needs.validate.outputs.is_prerelease == 'false'
-    
-    steps:
-    - name: Update Homebrew formula
-      uses: dawidd6/action-homebrew-bump-formula@v3
-      with:
-        token: ${{ secrets.HOMEBREW_TOKEN }}
-        formula: swift-complexity
-        tag: v${{ needs.validate.outputs.version }}
-        revision: ${{ github.sha }}
-      continue-on-error: true
 
   notify:
     name: Notify Release
