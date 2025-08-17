@@ -64,7 +64,7 @@ jobs:
       run: |
         if [[ "$RUNNER_OS" == "Linux" ]]; then
           # Install dependencies for Swiftly
-          sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev
+          sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev pkg-config python3-lldb-13
           
           # Install Swiftly
           curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
@@ -118,7 +118,7 @@ jobs:
       run: |
         if [[ "$RUNNER_OS" == "Linux" ]]; then
           # Install dependencies for Swiftly
-          sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev
+          sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev pkg-config python3-lldb-13
           
           # Install Swiftly
           curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
