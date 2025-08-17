@@ -23,7 +23,7 @@ concurrency:
 jobs:
   validate:
     name: Validate Release
-    runs-on: macos-14
+    runs-on: macos-15
     outputs:
       version: ${{ steps.version.outputs.version }}
       is_prerelease: ${{ steps.version.outputs.is_prerelease }}
@@ -92,10 +92,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-14
+          - os: macos-15
             arch: arm64
             platform: macos
-          - os: macos-14
+          - os: macos-15
             arch: x86_64
             platform: macos
           - os: ubuntu-22.04

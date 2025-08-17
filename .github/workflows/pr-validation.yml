@@ -88,7 +88,7 @@ jobs:
 
   validation:
     name: Validation Suite
-    runs-on: macos-14
+    runs-on: macos-15
     if: github.event.pull_request.draft == false
     
     steps:
@@ -163,7 +163,7 @@ jobs:
 
   performance-impact:
     name: Performance Impact Analysis
-    runs-on: macos-14
+    runs-on: macos-15
     if: github.event.pull_request.draft == false
     
     steps:
