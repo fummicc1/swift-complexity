@@ -3,5 +3,5 @@
 // Expected Cognitive Complexity: 0 (no control structures)
 
 func simpleFunction() {
-    print("Hello")
+  print("Hello")
 }

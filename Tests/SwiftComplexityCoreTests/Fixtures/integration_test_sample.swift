@@ -4,17 +4,17 @@
 // complexFunction: Cyclomatic=3, Cognitive varies
 
 func simpleFunction() -> String {
-    return "Hello, World!"
+  return "Hello, World!"
 }
 
 func complexFunction(number: Int) -> String {
-    if number > 0 {
-        if number > 10 {
-            return "Large"
-        } else {
-            return "Small positive"
-        }
+  if number > 0 {
+    if number > 10 {
+      return "Large"
     } else {
-        return "Not positive"
+      return "Small positive"
     }
+  } else {
+    return "Not positive"
+  }
 }

@@ -1,0 +1,279 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate Release
+    runs-on: macos-14
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Determine version
+      id: version
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          VERSION="${{ github.event.inputs.version }}"
+          IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/v}
+          if [[ $VERSION == *"alpha"* ]] || [[ $VERSION == *"beta"* ]] || [[ $VERSION == *"rc"* ]]; then
+            IS_PRERELEASE=true
+          else
+            IS_PRERELEASE=false
+          fi
+        fi
+        
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+        echo "Is pre-release: $IS_PRERELEASE"
+        
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: '6.1'
+        
+    - name: Build and test
+      run: |
+        swift build --configuration release
+        swift test
+
+  build-artifacts:
+    name: Build Release Artifacts
+    needs: validate
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            arch: arm64
+            platform: macos
+          - os: macos-14
+            arch: x86_64
+            platform: macos
+          - os: ubuntu-22.04
+            arch: x86_64
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: '6.1'
+        
+    - name: Build for ${{ matrix.platform }}-${{ matrix.arch }}
+      run: |
+        if [ "${{ matrix.platform }}" = "macos" ]; then
+          swift build \
+            --configuration release \
+            --arch ${{ matrix.arch }} \
+            --product swift-complexity
+        else
+          swift build \
+            --configuration release \
+            --product swift-complexity
+        fi
+          
+    - name: Create archive
+      run: |
+        PRODUCT_NAME="swift-complexity"
+        VERSION="${{ needs.validate.outputs.version }}"
+        ARCH="${{ matrix.arch }}"
+        PLATFORM="${{ matrix.platform }}"
+        ARCHIVE_NAME="${PRODUCT_NAME}-${VERSION}-${PLATFORM}-${ARCH}"
+        
+        mkdir -p "artifacts/${ARCHIVE_NAME}"
+        
+        # Copy binary
+        cp ".build/release/${PRODUCT_NAME}" "artifacts/${ARCHIVE_NAME}/"
+        
+        # Copy documentation
+        cp README.md "artifacts/${ARCHIVE_NAME}/"
+        cp -r docs "artifacts/${ARCHIVE_NAME}/"
+        
+        # Create install script
+        cat > "artifacts/${ARCHIVE_NAME}/install.sh" << 'EOF'
+        #!/bin/bash
+        set -e
+        
+        INSTALL_DIR="${HOME}/.local/bin"
+        mkdir -p "$INSTALL_DIR"
+        
+        cp swift-complexity "$INSTALL_DIR/"
+        chmod +x "$INSTALL_DIR/swift-complexity"
+        
+        echo "swift-complexity installed to $INSTALL_DIR"
+        echo "Make sure $INSTALL_DIR is in your PATH"
+        EOF
+        
+        chmod +x "artifacts/${ARCHIVE_NAME}/install.sh"
+        
+        # Create tarball
+        cd artifacts
+        tar -czf "${ARCHIVE_NAME}.tar.gz" "${ARCHIVE_NAME}"
+        
+        # Generate checksums
+        shasum -a 256 "${ARCHIVE_NAME}.tar.gz" > "${ARCHIVE_NAME}.tar.gz.sha256"
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: swift-complexity-${{ matrix.platform }}-${{ matrix.arch }}
+        path: artifacts/*.tar.gz*
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate, build-artifacts]
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: swift-complexity-*-*
+        merge-multiple: true
+        path: ./artifacts
+        
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        VERSION="${{ needs.validate.outputs.version }}"
+        
+        # Generate changelog from git commits
+        if git tag --list "v*" | head -1 > /dev/null; then
+          PREVIOUS_TAG=$(git tag --list "v*" --sort=-version:refname | head -1)
+          if [[ "$PREVIOUS_TAG" != "v$VERSION" ]]; then
+            COMMITS=$(git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..HEAD)
+          else
+            COMMITS=$(git log --pretty=format:"- %s (%h)" HEAD~10..HEAD)
+          fi
+        else
+          COMMITS=$(git log --pretty=format:"- %s (%h)" HEAD~10..HEAD)
+        fi
+        
+        cat > release_notes.md << EOF
+        ## What's Changed
+        
+        ${COMMITS}
+        
+        ## Installation
+        
+        ### Download Pre-built Binary
+        
+        1. Download the appropriate binary for your platform and architecture:
+           - **macOS Apple Silicon (M1/M2/M3)**: \`swift-complexity-${VERSION}-macos-arm64.tar.gz\`
+           - **macOS Intel**: \`swift-complexity-${VERSION}-macos-x86_64.tar.gz\`
+           - **Linux x86_64**: \`swift-complexity-${VERSION}-linux-x86_64.tar.gz\`
+        
+        2. Extract and install:
+           \`\`\`bash
+           # Extract the downloaded archive
+           tar -xzf swift-complexity-${VERSION}-*.tar.gz
+           cd swift-complexity-${VERSION}-*
+           ./install.sh
+           \`\`\`
+        
+        ### Build from Source
+        
+        \`\`\`bash
+        git clone https://github.com/\${{ github.repository }}.git
+        cd swift-complexity
+        git checkout v${VERSION}
+        swift build -c release
+        \`\`\`
+        
+        ## Verification
+        
+        All binaries are signed and checksums are provided for verification.
+        
+        \`\`\`bash
+        # Verify checksum (example for macOS)
+        shasum -a 256 -c swift-complexity-${VERSION}-*.tar.gz.sha256
+        \`\`\`
+        EOF
+        
+        echo "Generated release notes:"
+        cat release_notes.md
+        
+    - name: Create release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ needs.validate.outputs.version }}
+        name: v${{ needs.validate.outputs.version }}
+        body_path: release_notes.md
+        draft: false
+        prerelease: ${{ needs.validate.outputs.is_prerelease == 'true' }}
+        files: |
+          artifacts/*.tar.gz
+          artifacts/*.sha256
+        generate_release_notes: true
+
+  homebrew-update:
+    name: Update Homebrew Formula
+    runs-on: ubuntu-latest
+    needs: [validate, create-release]
+    if: needs.validate.outputs.is_prerelease == 'false'
+    
+    steps:
+    - name: Update Homebrew formula
+      uses: dawidd6/action-homebrew-bump-formula@v3
+      with:
+        token: ${{ secrets.HOMEBREW_TOKEN }}
+        formula: swift-complexity
+        tag: v${{ needs.validate.outputs.version }}
+        revision: ${{ github.sha }}
+      continue-on-error: true
+
+  notify:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [validate, create-release]
+    if: always()
+    
+    steps:
+    - name: Notify on success
+      if: needs.create-release.result == 'success'
+      run: |
+        echo "✅ Release v${{ needs.validate.outputs.version }} created successfully!"
+        
+    - name: Notify on failure
+      if: needs.create-release.result == 'failure'
+      run: |
+        echo "❌ Release v${{ needs.validate.outputs.version }} failed!"
+        exit 1

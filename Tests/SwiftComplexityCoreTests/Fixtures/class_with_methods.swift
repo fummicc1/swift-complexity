@@ -3,15 +3,15 @@
 // Function names: init, method1, method2
 
 class TestClass {
-    init(value: Int) {
-        self.value = value
-    }
+  init(value: Int) {
+    self.value = value
+  }
 
-    func method1() {
-        print("method1")
-    }
+  func method1() {
+    print("method1")
+  }
 
-    func method2() -> String {
-        return "method2"
-    }
+  func method2() -> String {
+    return "method2"
+  }
 }

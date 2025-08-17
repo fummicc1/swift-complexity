@@ -1,0 +1,126 @@
+name: Bug Report
+description: File a bug report to help us improve swift-complexity
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! 🐛
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Tell us what happened!
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Run command '...'
+        2. Analyze file '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: A clear and concise description of what actually happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: swift-code
+    attributes:
+      label: Swift Code Sample
+      description: If applicable, provide the Swift code that causes the issue
+      render: swift
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command Used
+      description: The exact swift-complexity command that was executed
+      render: bash
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Output/Error Messages
+      description: Any output or error messages you received
+      render: shell
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      description: What platform are you running on?
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux (Ubuntu)
+        - Linux (Other)
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS Version
+      description: What version of your operating system? (e.g., macOS 14.1, Ubuntu 22.04)
+      placeholder: macOS 14.1 or Ubuntu 22.04
+    validations:
+      required: true
+
+  - type: input
+    id: swift-version
+    attributes:
+      label: Swift Version
+      description: What version of Swift? (run `swift --version`)
+      placeholder: Swift 6.1
+    validations:
+      required: true
+
+  - type: input
+    id: tool-version
+    attributes:
+      label: swift-complexity Version
+      description: What version of swift-complexity? (run `swift run swift-complexity --version`)
+      placeholder: 1.0.0
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checks
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have tested with the latest version of swift-complexity
+          required: true
+        - label: I have provided all the required information above
+          required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (screenshots, etc.)

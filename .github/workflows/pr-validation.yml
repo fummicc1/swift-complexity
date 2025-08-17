@@ -1,0 +1,333 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [ main, develop ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-info:
+    name: PR Information
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Analyze PR changes
+      id: changes
+      run: |
+        # Get changed files
+        CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+        
+        # Count changes
+        SWIFT_FILES=$(echo "$CHANGED_FILES" | grep -E '\.swift$' | wc -l)
+        TEST_FILES=$(echo "$CHANGED_FILES" | grep -E 'Test.*\.swift$|.*Test\.swift$' | wc -l)
+        DOC_FILES=$(echo "$CHANGED_FILES" | grep -E '\.md$|docs/' | wc -l)
+        CONFIG_FILES=$(echo "$CHANGED_FILES" | grep -E 'Package\.swift|\.yml$|\.yaml$' | wc -l)
+        
+        echo "swift_files=$SWIFT_FILES" >> $GITHUB_OUTPUT
+        echo "test_files=$TEST_FILES" >> $GITHUB_OUTPUT
+        echo "doc_files=$DOC_FILES" >> $GITHUB_OUTPUT
+        echo "config_files=$CONFIG_FILES" >> $GITHUB_OUTPUT
+        
+        echo "Changed files analysis:"
+        echo "- Swift files: $SWIFT_FILES"
+        echo "- Test files: $TEST_FILES"
+        echo "- Documentation files: $DOC_FILES"
+        echo "- Configuration files: $CONFIG_FILES"
+        
+    - name: Comment PR analysis
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const swiftFiles = ${{ steps.changes.outputs.swift_files }};
+          const testFiles = ${{ steps.changes.outputs.test_files }};
+          const docFiles = ${{ steps.changes.outputs.doc_files }};
+          const configFiles = ${{ steps.changes.outputs.config_files }};
+          
+          let comment = '## 📊 PR Analysis\n\n';
+          comment += '| Type | Count |\n';
+          comment += '|------|-------|\n';
+          comment += `| Swift files | ${swiftFiles} |\n`;
+          comment += `| Test files | ${testFiles} |\n`;
+          comment += `| Documentation | ${docFiles} |\n`;
+          comment += `| Configuration | ${configFiles} |\n\n`;
+          
+          // Add recommendations
+          if (swiftFiles > 0 && testFiles === 0) {
+            comment += '⚠️ **Consider adding tests** for the Swift code changes.\n\n';
+          }
+          
+          if (swiftFiles > 5) {
+            comment += '📝 **Large PR**: Consider breaking this into smaller, focused PRs.\n\n';
+          }
+          
+          if (docFiles === 0 && swiftFiles > 0) {
+            comment += '📚 **Consider updating documentation** if new features were added.\n\n';
+          }
+          
+          comment += '---\n*Automated analysis by swift-complexity CI*';
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  validation:
+    name: Validation Suite
+    runs-on: macos-14
+    if: github.event.pull_request.draft == false
+    
+    steps:
+    - name: Checkout PR
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: '6.1'
+        
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          .build
+          Package.resolved
+        key: ${{ runner.os }}-swift-pr-${{ hashFiles('Package.swift', 'Package.resolved') }}
+        
+    - name: Build PR changes
+      run: |
+        swift build --configuration debug
+        swift build --configuration release
+        
+    - name: Run comprehensive tests
+      run: |
+        swift test --enable-code-coverage --parallel
+        
+    - name: Install swift-format
+      run: |
+        brew install swift-format
+        
+    - name: Check formatting compliance
+      run: |
+        if ! swift-format --configuration .swift-format --recursive Sources Tests --mode diff; then
+          echo "❌ Code formatting issues found. Run 'swift-format --configuration .swift-format --recursive Sources Tests --mode format --in-place' to fix."
+          exit 1
+        fi
+        echo "✅ Code formatting is compliant"
+        
+    - name: Run self-complexity analysis
+      run: |
+        # Build the tool first
+        swift build --configuration release
+        
+        # Run complexity analysis on changed Swift files only
+        CHANGED_SWIFT_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.swift' | grep -v Test | head -10)
+        
+        if [ ! -z "$CHANGED_SWIFT_FILES" ]; then
+          echo "Analyzing complexity of changed files:"
+          echo "$CHANGED_SWIFT_FILES"
+          
+          # Run analysis on each changed file
+          for file in $CHANGED_SWIFT_FILES; do
+            if [ -f "$file" ]; then
+              echo "Analyzing: $file"
+              swift run swift-complexity "$file" --threshold 20 --format json || true
+            fi
+          done
+        else
+          echo "No Swift source files changed in this PR"
+        fi
+
+  performance-impact:
+    name: Performance Impact Analysis
+    runs-on: macos-14
+    if: github.event.pull_request.draft == false
+    
+    steps:
+    - name: Checkout base branch
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.base_ref }}
+        
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: '6.1'
+        
+    - name: Build baseline
+      run: |
+        swift build --configuration release
+        
+    - name: Benchmark baseline
+      run: |
+        # Create a sample Swift file for benchmarking
+        mkdir -p benchmark-data
+        cat > benchmark-data/sample.swift << 'EOF'
+        func complexFunction(param: Int) -> String {
+            if param > 100 {
+                for i in 0..<param {
+                    if i % 2 == 0 {
+                        if i % 4 == 0 {
+                            print("Complex logic")
+                        }
+                    }
+                }
+                return "high"
+            } else if param > 50 {
+                return "medium"
+            } else {
+                return "low"
+            }
+        }
+        EOF
+        
+        # Benchmark the current version
+        time swift run swift-complexity benchmark-data/sample.swift --format json > baseline-benchmark.json
+        
+    - name: Checkout PR
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        
+    - name: Build PR version
+      run: |
+        swift build --configuration release
+        
+    - name: Benchmark PR version
+      run: |
+        # Benchmark the PR version
+        time swift run swift-complexity benchmark-data/sample.swift --format json > pr-benchmark.json
+        
+    - name: Compare results
+      run: |
+        echo "Baseline benchmark completed"
+        echo "PR benchmark completed"
+        echo "Performance comparison would be implemented here"
+        # In a real scenario, you'd compare execution times and memory usage
+
+  security-check:
+    name: Security Check
+    runs-on: macos-14
+    if: github.event.pull_request.draft == false
+    
+    steps:
+    - name: Checkout PR
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        
+    - name: Check for sensitive data
+      run: |
+        # Check for common sensitive patterns
+        if grep -r -E "(password|secret|api_key|token)" --include="*.swift" Sources/; then
+          echo "❌ Potential sensitive data found in source code"
+          exit 1
+        fi
+        
+        if grep -r -E "(TODO|FIXME|XXX)" --include="*.swift" Sources/; then
+          echo "⚠️ Found TODO/FIXME comments - consider addressing before merge"
+        fi
+        
+        echo "✅ No obvious security issues found"
+        
+    - name: Check dependencies
+      run: |
+        swift package show-dependencies --format json > dependencies.json
+        echo "Dependencies check completed"
+
+  auto-label:
+    name: Auto Label PR
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    needs: [pr-info]
+    
+    steps:
+    - name: Add labels based on changes
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: pr } = await github.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number
+          });
+          
+          const title = pr.title.toLowerCase();
+          const labels = [];
+          
+          // Auto-label based on title
+          if (title.includes('fix') || title.includes('bug')) {
+            labels.push('bug');
+          }
+          if (title.includes('feat') || title.includes('feature')) {
+            labels.push('enhancement');
+          }
+          if (title.includes('doc') || title.includes('readme')) {
+            labels.push('documentation');
+          }
+          if (title.includes('test')) {
+            labels.push('testing');
+          }
+          if (title.includes('refactor') || title.includes('cleanup')) {
+            labels.push('refactoring');
+          }
+          if (title.includes('perf') || title.includes('performance')) {
+            labels.push('performance');
+          }
+          
+          // Auto-label based on file changes
+          const files = await github.rest.pulls.listFiles({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number
+          });
+          
+          const hasSwiftChanges = files.data.some(f => f.filename.endsWith('.swift'));
+          const hasTestChanges = files.data.some(f => f.filename.includes('Test'));
+          const hasDocChanges = files.data.some(f => f.filename.endsWith('.md'));
+          const hasConfigChanges = files.data.some(f => 
+            f.filename.includes('Package.swift') || 
+            f.filename.includes('.yml') || 
+            f.filename.includes('.yaml')
+          );
+          
+          if (hasSwiftChanges) labels.push('swift');
+          if (hasTestChanges) labels.push('testing');
+          if (hasDocChanges) labels.push('documentation');
+          if (hasConfigChanges) labels.push('configuration');
+          
+          // Add size label
+          const additions = pr.additions;
+          const deletions = pr.deletions;
+          const totalChanges = additions + deletions;
+          
+          if (totalChanges < 50) {
+            labels.push('size/small');
+          } else if (totalChanges < 200) {
+            labels.push('size/medium');
+          } else {
+            labels.push('size/large');
+          }
+          
+          // Apply labels
+          if (labels.length > 0) {
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: labels
+            });
+          }

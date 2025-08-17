@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    strategy:
+      matrix:
+        os: [macos-14, ubuntu-22.04]
+        swift-version: ['6.1']
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: ${{ matrix.swift-version }}
+        
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          .build
+          Package.resolved
+        key: ${{ runner.os }}-swift-${{ matrix.swift-version }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-swift-${{ matrix.swift-version }}-
+          
+    - name: Build package
+      run: swift build --configuration release
+      
+    - name: Run tests
+      run: swift test
+
+  lint:
+    name: Code Quality
+    runs-on: macos-14
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: '6.1'
+        
+    - name: Install swift-format (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install swift-format
+        
+    - name: Install swift-format (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        # On Linux, we'll skip swift-format for now as it requires complex setup
+        echo "swift-format check skipped on Linux"
+        
+    - name: Check code formatting
+      if: runner.os == 'macOS'
+      run: |
+        swift-format --configuration .swift-format --recursive Sources Tests --mode diff
+        
+    - name: Lint documentation
+      uses: DavidAnson/markdownlint-cli2-action@v16
+      with:
+        globs: '**/*.md'
+        config: '.markdownlint.yml'
+      continue-on-error: true
+
+  complexity-analysis:
+    name: Self Complexity Analysis
+    runs-on: macos-14
+    needs: [test]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: '6.1'
+        
+    - name: Build swift-complexity
+      run: swift build --configuration release
+      
+    - name: Run complexity analysis on self
+      run: |
+        swift run swift-complexity Sources --format json --threshold 15 --recursive > complexity-report.json
+        
+    - name: Upload complexity report
+      uses: actions/upload-artifact@v4
+      with:
+        name: complexity-report
+        path: complexity-report.json
+        
+    - name: Comment complexity results on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          try {
+            const report = JSON.parse(fs.readFileSync('complexity-report.json', 'utf8'));
+            
+            let comment = '## 🔍 Complexity Analysis Results\n\n';
+            
+            if (report.files && report.files.length > 0) {
+              comment += `Found ${report.files.length} files with functions exceeding threshold (15):\n\n`;
+              
+              report.files.forEach(file => {
+                comment += `### ${file.filePath}\n`;
+                comment += '| Function | Cyclomatic | Cognitive |\n';
+                comment += '|----------|------------|----------|\n';
+                
+                file.functions.forEach(func => {
+                  const cyclo = func.cyclomaticComplexity >= 15 ? `**${func.cyclomaticComplexity}**` : func.cyclomaticComplexity;
+                  const cogn = func.cognitiveComplexity >= 15 ? `**${func.cognitiveComplexity}**` : func.cognitiveComplexity;
+                  comment += `| ${func.name} | ${cyclo} | ${cogn} |\n`;
+                });
+                comment += '\n';
+              });
+            } else {
+              comment += '✅ All functions are below the complexity threshold of 15.\n';
+            }
+            
+            comment += '\n*This analysis was performed by swift-complexity itself.*';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } catch (error) {
+            console.log('No complexity report found or parsing failed:', error);
+          }
+
