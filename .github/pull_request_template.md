@@ -1,10 +1,12 @@
 # Pull Request
 
-## Description
+## Overview
 
-Brief description of what this PR does.
+Brief description of what this PR accomplishes and why it's needed.
 
 ## Type of Change
+
+Please check all that apply:
 
 - [ ] 🐛 Bug fix (non-breaking change which fixes an issue)
 - [ ] ✨ New feature (non-breaking change which adds functionality)
@@ -14,6 +16,7 @@ Brief description of what this PR does.
 - [ ] 🧪 Test improvements
 - [ ] ⚡ Performance improvements
 - [ ] 🔨 Build/CI improvements
+- [ ] 🌍 Cross-platform compatibility changes
 
 ## Related Issues
 
@@ -51,13 +54,39 @@ swift run swift-complexity Sources --threshold 15
 
 ## Complexity Analysis
 
+### Self-Analysis Required
+
+- [ ] Complexity analysis run on changed files
+- [ ] No functions exceed threshold (15)
+- [ ] New complex code is justified and documented
+
 Run swift-complexity on your changes:
 ```bash
 # Analyze changed files for complexity
 swift run swift-complexity [changed-files] --threshold 15 --format text
+
+# For comprehensive analysis
+swift run swift-complexity Sources --threshold 15 --recursive --format json
 ```
 
 **Results**: (paste results here or indicate no high-complexity functions added)
+
+**Justification for complex functions**: (if any functions exceed threshold)
+
+## Cross-Platform Compatibility
+
+### Platform Testing
+
+- [ ] Changes tested on macOS (Apple Silicon)
+- [ ] Changes tested on macOS (Intel)
+- [ ] Changes tested on Linux (Ubuntu 22.04+)
+- [ ] Platform-specific code properly conditionally compiled
+
+### Platform Considerations
+
+- [ ] No platform-specific dependencies added
+- [ ] Linux compatibility maintained
+- [ ] macOS-specific features properly isolated (e.g., swift-format)
 
 ## Performance Impact
 
@@ -98,10 +127,21 @@ swift run swift-complexity [changed-files] --threshold 15 --format text
 - [ ] CLAUDE.md updated (if architecture changes)
 - [ ] API documentation updated (if applicable)
 
+### Dependencies
+
+- [ ] No new dependencies added
+- [ ] New dependencies justified and documented
+- [ ] Package.swift updated appropriately
+- [ ] Cross-platform compatibility verified for new dependencies
+
 ### CI/CD
-- [ ] CI checks pass
+
+- [ ] CI pipeline passes (macOS & Linux)
 - [ ] No new linting warnings introduced
-- [ ] Code coverage maintained or improved
+- [ ] Code formatting validation passes (swift-format on macOS)
+- [ ] Documentation linting passes (markdownlint)
+- [ ] Self-complexity analysis in CI passes
+- [ ] Release workflow compatibility maintained (if applicable)
 
 ## Additional Notes
 
@@ -109,8 +149,23 @@ swift run swift-complexity [changed-files] --threshold 15 --format text
 
 ---
 
-**Reviewer Guidelines**:
-- Check that complexity analysis results are reasonable
-- Verify test coverage for new functionality
-- Ensure documentation is updated appropriately
-- Validate that the change aligns with project goals
+## For Reviewers
+
+### Review Checklist
+
+- [ ] **Complexity Analysis**: Results are reasonable and justified
+- [ ] **Cross-Platform**: Changes work on both macOS and Linux
+- [ ] **Test Coverage**: Adequate test coverage for new functionality
+- [ ] **Documentation**: Updated appropriately for changes
+- [ ] **CI/CD**: All automated checks pass
+- [ ] **Architecture**: Changes align with project goals and patterns
+- [ ] **Performance**: No unexpected performance regressions
+- [ ] **Dependencies**: New dependencies are justified and secure
+
+### Key Areas to Focus On
+
+1. **Code Quality**: Maintainable, readable, and follows project conventions
+2. **Platform Compatibility**: Proper handling of macOS/Linux differences
+3. **Complexity Management**: New code doesn't unnecessarily increase complexity
+4. **Test Quality**: Tests are comprehensive and meaningful
+5. **Documentation**: Changes are properly documented for users and developers
