@@ -54,10 +54,10 @@ jobs:
         echo "Version: $VERSION"
         echo "Is pre-release: $IS_PRERELEASE"
         
-    - name: Setup Swift
-      uses: swift-actions/setup-swift@v2
+    - name: Setup Swift with Swiftly
+      uses: vapor/swiftly-action@v0.2
       with:
-        swift-version: '6.1'
+        toolchain: "6.1"
         
     - name: Build and test
       run: |
@@ -85,10 +85,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup Swift
-      uses: swift-actions/setup-swift@v2
+    - name: Setup Swift with Swiftly
+      uses: vapor/swiftly-action@v0.2
       with:
-        swift-version: '6.1'
+        toolchain: "6.1"
         
     - name: Build for ${{ matrix.platform }}-${{ matrix.arch }}
       run: |

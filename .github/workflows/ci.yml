@@ -23,10 +23,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup Swift
-      uses: swift-actions/setup-swift@v2
+    - name: Setup Swift with Swiftly
+      uses: vapor/swiftly-action@v0.2
       with:
-        swift-version: ${{ matrix.swift-version }}
+        toolchain: ${{ matrix.swift-version }}
         
     - name: Cache Swift packages
       uses: actions/cache@v4
@@ -52,10 +52,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup Swift
-      uses: swift-actions/setup-swift@v2
+    - name: Setup Swift with Swiftly
+      uses: vapor/swiftly-action@v0.2
       with:
-        swift-version: '6.1'
+        toolchain: "6.1"
         
     - name: Install swift-format (macOS)
       if: runner.os == 'macOS'
@@ -89,10 +89,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup Swift
-      uses: swift-actions/setup-swift@v2
+    - name: Setup Swift with Swiftly
+      uses: vapor/swiftly-action@v0.2
       with:
-        swift-version: '6.1'
+        toolchain: "6.1"
         
     - name: Build swift-complexity
       run: swift build --configuration release

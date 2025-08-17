@@ -14,6 +14,9 @@ jobs:
     name: PR Information
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
+    permissions:
+      contents: read
+      pull-requests: write
     
     steps:
     - name: Checkout code
@@ -94,10 +97,10 @@ jobs:
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         
-    - name: Setup Swift
-      uses: swift-actions/setup-swift@v2
+    - name: Setup Swift with Swiftly
+      uses: vapor/swiftly-action@v0.2
       with:
-        swift-version: '6.1'
+        toolchain: "6.1"
         
     - name: Cache Swift packages
       uses: actions/cache@v4
@@ -162,10 +165,10 @@ jobs:
       with:
         ref: ${{ github.base_ref }}
         
-    - name: Setup Swift
-      uses: swift-actions/setup-swift@v2
+    - name: Setup Swift with Swiftly
+      uses: vapor/swiftly-action@v0.2
       with:
-        swift-version: '6.1'
+        toolchain: "6.1"
         
     - name: Build baseline
       run: |
