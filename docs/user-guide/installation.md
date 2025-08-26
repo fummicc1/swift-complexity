@@ -15,7 +15,7 @@ cd swift-complexity
 swift build --configuration release
 ```
 
-The executable will be available at `.build/release/SwiftComplexity`.
+The executable will be available at `.build/release/swift-complexity`.
 
 ### Option 2: Development Installation
 
@@ -28,8 +28,9 @@ swift build
 ```
 
 Run with:
+
 ```bash
-swift run SwiftComplexity [options]
+swift run swift-complexity [options]
 ```
 
 ## Verification
@@ -37,12 +38,13 @@ swift run SwiftComplexity [options]
 Verify installation:
 
 ```bash
-swift run SwiftComplexity --version
+swift run swift-complexity --version
 ```
 
 Or if using release build:
+
 ```bash
-.build/release/SwiftComplexity --version
+.build/release/swift-complexity --version
 ```
 
 ## Troubleshooting

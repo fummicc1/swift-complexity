@@ -32,9 +32,9 @@ Total: 2 functions, Average Cyclomatic: 3.0, Average Cognitive: 4.0
 ### Usage
 
 ```bash
-swift run SwiftComplexity Sources --format text
+swift run swift-complexity Sources --format text
 # or simply (text is default)
-swift run SwiftComplexity Sources
+swift run swift-complexity Sources
 ```
 
 ## JSON Format
@@ -120,7 +120,7 @@ Structured data format for tool integration and programmatic processing.
 ### Usage
 
 ```bash
-swift run SwiftComplexity Sources --format json > complexity-report.json
+swift run swift-complexity Sources --format json > complexity-report.json
 ```
 
 ### Integration Examples
@@ -209,7 +209,7 @@ Structured XML format for integration with reporting tools and IDEs.
 ### Usage
 
 ```bash
-swift run SwiftComplexity Sources --format xml > complexity-report.xml
+swift run swift-complexity Sources --format xml > complexity-report.xml
 ```
 
 ### Integration Examples
