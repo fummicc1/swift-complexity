@@ -48,50 +48,50 @@ swift run SwiftComplexity path/to/directory --recursive
 
 ```bash
 # Analyze current directory
-swift run SwiftComplexity .
+swift run swift-complexity .
 
 # Analyze specific file with verbose output
-swift run SwiftComplexity Sources/MyFile.swift --verbose
+swift run swift-complexity Sources/MyFile.swift --verbose
 ```
 
 ### Output Formats
 
 ```bash
 # JSON output for tool integration
-swift run SwiftComplexity Sources --format json > complexity.json
+swift run swift-complexity Sources --format json > complexity.json
 
 # XML output for reporting tools
-swift run SwiftComplexity Sources --format xml > complexity.xml
+swift run swift-complexity Sources --format xml > complexity.xml
 ```
 
 ### Filtering and Thresholds
 
 ```bash
 # Set complexity threshold
-swift run SwiftComplexity Sources --threshold 10
+swift run swift-complexity Sources --threshold 10
 
 # Exclude test files
-swift run SwiftComplexity Sources --exclude "*Test*.swift" "*Mock*.swift"
+swift run swift-complexity Sources --exclude "*Test*.swift" "*Mock*.swift"
 
 # Recursive analysis excluding build directory
-swift run SwiftComplexity . --recursive --exclude ".build/*"
+swift run swift-complexity . --recursive --exclude ".build/*"
 ```
 
 ### Specific Metrics
 
 ```bash
 # Only cyclomatic complexity
-swift run SwiftComplexity Sources --cyclomatic-only
+swift run swift-complexity Sources --cyclomatic-only
 
-# Only cognitive complexity  
-swift run SwiftComplexity Sources --cognitive-only
+# Only cognitive complexity
+swift run swift-complexity Sources --cognitive-only
 ```
 
 ### Complex Examples
 
 ```bash
 # Comprehensive project analysis
-swift run SwiftComplexity Sources Tests \
+swift run swift-complexity Sources Tests \
   --recursive \
   --format json \
   --threshold 15 \
@@ -99,7 +99,7 @@ swift run SwiftComplexity Sources Tests \
   --verbose
 
 # Quick complexity check for pull requests
-swift run SwiftComplexity $(git diff --name-only HEAD~1 | grep "\.swift$")
+swift run swift-complexity $(git diff --name-only HEAD~1 | grep "\.swift$")
 ```
 
 ## Integration with Build Systems
@@ -121,7 +121,7 @@ fi
 ```yaml
 - name: Check Code Complexity
   run: |
-    swift run SwiftComplexity Sources Tests \
+    swift run swift-complexity Sources Tests \
       --recursive \
       --format json \
       --threshold 15 > complexity-report.json
@@ -131,10 +131,10 @@ fi
 
 ```makefile
 complexity:
-	swift run SwiftComplexity Sources --recursive --threshold 10
+	swift run swift-complexity Sources --recursive --threshold 10
 
 complexity-report:
-	swift run SwiftComplexity Sources --format json > complexity-report.json
+	swift run swift-complexity Sources --format json > complexity-report.json
 ```
 
 ## Exit Codes
