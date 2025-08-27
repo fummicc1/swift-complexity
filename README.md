@@ -64,10 +64,11 @@ swift run swift-complexity Sources --threshold 15 --recursive
 
 ## Package Structure
 
-This project uses a dual-target architecture:
+This project uses a multi-target architecture:
 
 - **SwiftComplexityCore**: Core analysis library (reusable)
 - **SwiftComplexityCLI**: Command-line interface
+- **SwiftComplexityPlugin**: Xcode Build Tool Plugin for automatic analysis
 
 ## Usage Examples
 
@@ -81,6 +82,49 @@ swift run swift-complexity Sources --recursive --exclude "*Test*.swift"
 # Show only cognitive complexity above threshold
 swift run swift-complexity Sources --cognitive-only --threshold 5
 ```
+
+## Xcode Build Tool Plugin
+
+swift-complexity can be integrated into your Xcode build process as a Build Tool Plugin:
+
+### Package.swift Integration
+
+Add swift-complexity as a dependency and apply the plugin to your targets:
+
+```swift
+// swift-tools-version: 5.9
+import PackageDescription
+
+let package = Package(
+    name: "YourProject",
+    dependencies: [
+        .package(url: "https://github.com/your-org/swift-complexity.git", from: "1.0.0")
+    ],
+    targets: [
+        .target(
+            name: "YourTarget",
+            dependencies: [],
+            plugins: [
+                .plugin(name: "SwiftComplexityPlugin", package: "swift-complexity")
+            ]
+        )
+    ]
+)
+```
+
+### Configuration
+
+The plugin supports environment-based configuration:
+
+- `SWIFT_COMPLEXITY_THRESHOLD`: Set complexity threshold (default: 10)
+
+### Automatic Analysis
+
+Once configured, the plugin will:
+- Run automatically during builds
+- Analyze all Swift files in your target
+- Generate JSON complexity reports
+- Fail the build if complexity thresholds are exceeded
 
 ## Output Example
 

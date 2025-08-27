@@ -35,6 +35,24 @@
             "name": "Release SwiftComplexity",
             "program": "${workspaceFolder:swift-complexity}/.build/release/SwiftComplexity",
             "preLaunchTask": "swift: Build Release SwiftComplexity"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:swift-complexity}",
+            "name": "Debug SwiftComplexityCLI",
+            "program": "${workspaceFolder:swift-complexity}/.build/debug/SwiftComplexityCLI",
+            "preLaunchTask": "swift: Build Debug SwiftComplexityCLI"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:swift-complexity}",
+            "name": "Release SwiftComplexityCLI",
+            "program": "${workspaceFolder:swift-complexity}/.build/release/SwiftComplexityCLI",
+            "preLaunchTask": "swift: Build Release SwiftComplexityCLI"
         }
     ]
 }
