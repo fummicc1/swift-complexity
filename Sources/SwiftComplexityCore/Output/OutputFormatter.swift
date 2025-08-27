@@ -27,6 +27,8 @@ public class OutputFormatter {
             return formatAsJSON(results: results, options: options)
         case .xml:
             return formatAsXML(results: results, options: options)
+        case .xcode:
+            return formatAsXcodeDiagnostics(results: results, options: options)
         }
     }
 
@@ -165,5 +167,36 @@ public class OutputFormatter {
             .replacingOccurrences(of: ">", with: "&gt;")
             .replacingOccurrences(of: "\"", with: "&quot;")
             .replacingOccurrences(of: "'", with: "&apos;")
+    }
+
+    // MARK: - Xcode Diagnostics Format
+
+    private func formatAsXcodeDiagnostics(results: [ComplexityResult], options: OutputOptions)
+        -> String
+    {
+        var output = ""
+        let threshold = options.threshold ?? 10
+
+        for result in results {
+            for function in result.functions {
+                let cyclomatic = function.cyclomaticComplexity
+                let cognitive = function.cognitiveComplexity
+
+                // Check if either complexity exceeds threshold
+                if cyclomatic > threshold || cognitive > threshold {
+                    let severity =
+                        (cyclomatic > threshold * 2 || cognitive > threshold * 2)
+                        ? "error" : "warning"
+                    let message =
+                        "Function '\(function.name)' has high complexity (Cyclomatic: \(cyclomatic), Cognitive: \(cognitive), Threshold: \(threshold))"
+
+                    // Format: <file>:<line>:<column>: <severity>: <message>
+                    output +=
+                        "\(result.filePath):\(function.location.line):\(function.location.column): \(severity): \(message)\n"
+                }
+            }
+        }
+
+        return output
     }
 }
