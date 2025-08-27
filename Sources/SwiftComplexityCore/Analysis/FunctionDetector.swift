@@ -29,7 +29,7 @@ class FunctionDetector: SyntaxVisitor {
     public override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
         let name = extractFunctionName(from: node)
         let signature = extractFunctionSignature(from: node)
-        let location = extractLocation(from: node)
+        let location = extractLocation(from: node.funcKeyword)
 
         let detectedFunction = DetectedFunction(
             name: name,
@@ -46,7 +46,7 @@ class FunctionDetector: SyntaxVisitor {
     public override func visit(_ node: InitializerDeclSyntax) -> SyntaxVisitorContinueKind {
         let name = "init"
         let signature = extractInitializerSignature(from: node)
-        let location = extractLocation(from: node)
+        let location = extractLocation(from: node.initKeyword)
 
         let detectedFunction = DetectedFunction(
             name: name,
@@ -63,7 +63,7 @@ class FunctionDetector: SyntaxVisitor {
     public override func visit(_ node: DeinitializerDeclSyntax) -> SyntaxVisitorContinueKind {
         let name = "deinit"
         let signature = "deinit"
-        let location = extractLocation(from: node)
+        let location = extractLocation(from: node.deinitKeyword)
 
         let detectedFunction = DetectedFunction(
             name: name,
@@ -81,7 +81,7 @@ class FunctionDetector: SyntaxVisitor {
         let accessorKind = node.accessorSpecifier.text
         let name = accessorKind
         let signature = accessorKind
-        let location = extractLocation(from: node)
+        let location = extractLocation(from: node.accessorSpecifier)
 
         let detectedFunction = DetectedFunction(
             name: name,
@@ -132,7 +132,7 @@ class FunctionDetector: SyntaxVisitor {
             return SourceLocation(line: 0, column: 0)
         }
 
-        let sourceLocation = converter.location(for: node.position)
+        let sourceLocation = converter.location(for: node.positionAfterSkippingLeadingTrivia)
         return SourceLocation(line: sourceLocation.line, column: sourceLocation.column)
     }
 }

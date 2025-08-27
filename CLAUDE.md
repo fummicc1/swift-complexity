@@ -67,8 +67,8 @@ swift-complexity is a CLI tool that analyzes Swift code complexity using SwiftSy
 
 ### ViewMode Consistency
 
-- Use `.fixedUp` in SyntaxVisitor (consistency with formatted code)
-- Unified `.fixedUp` for manual children exploration
+- Use `.sourceAccurate` in SyntaxVisitor (consistency with formatted code)
+- Unified `.sourceAccurate` for manual children exploration
 
 ### Access Control
 

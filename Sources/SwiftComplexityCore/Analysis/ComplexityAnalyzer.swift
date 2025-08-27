@@ -11,9 +11,9 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
     private let functionDetector: FunctionDetector
 
     public init() {
-        self.cyclomaticCalculator = CyclomaticComplexityCalculator(viewMode: .fixedUp)
-        self.cognitiveCalculator = CognitiveComplexityCalculator(viewMode: .fixedUp)
-        self.functionDetector = FunctionDetector(viewMode: .fixedUp)
+        self.cyclomaticCalculator = CyclomaticComplexityCalculator(viewMode: .sourceAccurate)
+        self.cognitiveCalculator = CognitiveComplexityCalculator(viewMode: .sourceAccurate)
+        self.functionDetector = FunctionDetector(viewMode: .sourceAccurate)
     }
 
     public func analyze(sourceFile: SourceFileSyntax, filePath: String) async throws

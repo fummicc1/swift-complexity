@@ -5,6 +5,7 @@ public enum OutputFormat: String, CaseIterable {
     case text
     case json
     case xml
+    case xcode  // Xcode diagnostics format
 
     public static var help: String {
         let descriptions = allCases.map { format in
@@ -21,6 +22,8 @@ public enum OutputFormat: String, CaseIterable {
             return "JSON format for machine processing"
         case .xml:
             return "XML format for report tools"
+        case .xcode:
+            return "Xcode diagnostics format for IDE integration"
         }
     }
 

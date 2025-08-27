@@ -110,7 +110,7 @@ struct ComplexityCalculatorTests {
             // Given
             let code = try loadFixture("simple_function")
             let sourceFile = Parser.parse(source: code)
-            let calculator = CyclomaticComplexityCalculator(viewMode: .fixedUp)
+            let calculator = CyclomaticComplexityCalculator(viewMode: .sourceAccurate)
 
             // When
             guard let function = sourceFile.statements.first?.item.as(FunctionDeclSyntax.self)
@@ -129,7 +129,7 @@ struct ComplexityCalculatorTests {
             // Given
             let code = try loadFixture("function_with_if")
             let sourceFile = Parser.parse(source: code)
-            let calculator = CyclomaticComplexityCalculator(viewMode: .fixedUp)
+            let calculator = CyclomaticComplexityCalculator(viewMode: .sourceAccurate)
 
             // When
             guard let function = sourceFile.statements.first?.item.as(FunctionDeclSyntax.self)
@@ -148,7 +148,7 @@ struct ComplexityCalculatorTests {
             // Given
             let code = try loadFixture("nested_conditions")
             let sourceFile = Parser.parse(source: code)
-            let calculator = CyclomaticComplexityCalculator(viewMode: .fixedUp)
+            let calculator = CyclomaticComplexityCalculator(viewMode: .sourceAccurate)
 
             // When
             guard let function = sourceFile.statements.first?.item.as(FunctionDeclSyntax.self)
@@ -172,7 +172,7 @@ struct ComplexityCalculatorTests {
             // Given
             let code = try loadFixture("simple_function")
             let sourceFile = Parser.parse(source: code)
-            let calculator = CognitiveComplexityCalculator(viewMode: .fixedUp)
+            let calculator = CognitiveComplexityCalculator(viewMode: .sourceAccurate)
 
             // When
             guard let function = sourceFile.statements.first?.item.as(FunctionDeclSyntax.self)
@@ -191,7 +191,7 @@ struct ComplexityCalculatorTests {
             // Given
             let code = try loadFixture("cognitive_nested_conditions")
             let sourceFile = Parser.parse(source: code)
-            let calculator = CognitiveComplexityCalculator(viewMode: .fixedUp)
+            let calculator = CognitiveComplexityCalculator(viewMode: .sourceAccurate)
 
             // When
             guard let function = sourceFile.statements.first?.item.as(FunctionDeclSyntax.self)
@@ -222,7 +222,7 @@ struct FunctionDetectionTests {
         // Given
         let code = try loadFixture("single_function")
         let sourceFile = Parser.parse(source: code)
-        let detector = FunctionDetector(viewMode: .fixedUp)
+        let detector = FunctionDetector(viewMode: .sourceAccurate)
 
         // When
         let functions = detector.detectFunctions(in: sourceFile)
@@ -238,7 +238,7 @@ struct FunctionDetectionTests {
         // Given
         let code = try loadFixture("class_with_methods")
         let sourceFile = Parser.parse(source: code)
-        let detector = FunctionDetector(viewMode: .fixedUp)
+        let detector = FunctionDetector(viewMode: .sourceAccurate)
 
         // When
         let functions = detector.detectFunctions(in: sourceFile)
@@ -364,7 +364,7 @@ struct PerformanceTests {
         }
 
         let sourceFile = Parser.parse(source: code)
-        let detector = FunctionDetector(viewMode: .fixedUp)
+        let detector = FunctionDetector(viewMode: .sourceAccurate)
 
         // When & Then
         _ = detector.detectFunctions(in: sourceFile)
@@ -376,8 +376,8 @@ struct PerformanceTests {
         let code = try loadFixture("very_complex_function")
 
         let sourceFile = Parser.parse(source: code)
-        let cyclomaticCalculator = CyclomaticComplexityCalculator(viewMode: .fixedUp)
-        let cognitiveCalculator = CognitiveComplexityCalculator(viewMode: .fixedUp)
+        let cyclomaticCalculator = CyclomaticComplexityCalculator(viewMode: .sourceAccurate)
+        let cognitiveCalculator = CognitiveComplexityCalculator(viewMode: .sourceAccurate)
 
         guard let function = sourceFile.statements.first?.item.as(FunctionDeclSyntax.self) else {
             Issue.record("Failed to parse function")

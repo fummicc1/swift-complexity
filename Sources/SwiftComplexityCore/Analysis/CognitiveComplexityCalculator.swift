@@ -22,7 +22,7 @@ class CognitiveComplexityCalculator: SyntaxVisitor {
         nestingLevel += 1
 
         // Visit children with increased nesting
-        for child in node.children(viewMode: .fixedUp) {
+        for child in node.children(viewMode: .sourceAccurate) {
             walk(child)
         }
 
@@ -35,7 +35,7 @@ class CognitiveComplexityCalculator: SyntaxVisitor {
         complexity += 1 + nestingLevel
         nestingLevel += 1
 
-        for child in node.children(viewMode: .fixedUp) {
+        for child in node.children(viewMode: .sourceAccurate) {
             walk(child)
         }
 
@@ -48,7 +48,7 @@ class CognitiveComplexityCalculator: SyntaxVisitor {
         complexity += 1 + nestingLevel
         nestingLevel += 1
 
-        for child in node.children(viewMode: .fixedUp) {
+        for child in node.children(viewMode: .sourceAccurate) {
             walk(child)
         }
 
@@ -61,7 +61,7 @@ class CognitiveComplexityCalculator: SyntaxVisitor {
         complexity += 1 + nestingLevel
         nestingLevel += 1
 
-        for child in node.children(viewMode: .fixedUp) {
+        for child in node.children(viewMode: .sourceAccurate) {
             walk(child)
         }
 
@@ -74,7 +74,7 @@ class CognitiveComplexityCalculator: SyntaxVisitor {
         complexity += 1 + nestingLevel
         nestingLevel += 1
 
-        for child in node.children(viewMode: .fixedUp) {
+        for child in node.children(viewMode: .sourceAccurate) {
             walk(child)
         }
 
@@ -87,7 +87,7 @@ class CognitiveComplexityCalculator: SyntaxVisitor {
         complexity += 1 + nestingLevel
         nestingLevel += 1
 
-        for child in node.children(viewMode: .fixedUp) {
+        for child in node.children(viewMode: .sourceAccurate) {
             walk(child)
         }
 
@@ -100,7 +100,7 @@ class CognitiveComplexityCalculator: SyntaxVisitor {
         complexity += 1 + nestingLevel
         nestingLevel += 1
 
-        for child in node.children(viewMode: .fixedUp) {
+        for child in node.children(viewMode: .sourceAccurate) {
             walk(child)
         }
 
@@ -138,7 +138,7 @@ class CognitiveComplexityCalculator: SyntaxVisitor {
         let savedSequenceState = logicalSequenceActive
         logicalSequenceActive = false
 
-        for child in node.children(viewMode: .fixedUp) {
+        for child in node.children(viewMode: .sourceAccurate) {
             walk(child)
         }
 
