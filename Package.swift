@@ -6,7 +6,8 @@ import PackageDescription
 let package = Package(
   name: "swift-complexity",
   platforms: [
-    .macOS(.v14)
+    .macOS(.v14),
+    .iOS(.v13),
   ],
   products: [
     .library(
@@ -14,7 +15,7 @@ let package = Package(
       targets: ["SwiftComplexityCore"]
     ),
     .executable(
-      name: "swift-complexity",
+      name: "SwiftComplexityCLI",
       targets: ["SwiftComplexityCLI"]
     ),
   ],
