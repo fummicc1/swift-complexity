@@ -18,6 +18,10 @@ let package = Package(
       name: "SwiftComplexityCLI",
       targets: ["SwiftComplexityCLI"]
     ),
+    .plugin(
+      name: "SwiftComplexityPlugin",
+      targets: ["SwiftComplexityPlugin"]
+    ),
   ],
   dependencies: [
     .package(url: "https://github.com/apple/swift-syntax.git", from: "600.0.0"),
@@ -59,6 +63,13 @@ let package = Package(
         "SwiftComplexityCore",
       ],
       path: "Tests/SwiftComplexityCLITests",
+    ),
+    .plugin(
+      name: "SwiftComplexityPlugin",
+      capability: .buildTool(),
+      dependencies: [
+        "SwiftComplexityCLI"
+      ]
     ),
   ]
 )

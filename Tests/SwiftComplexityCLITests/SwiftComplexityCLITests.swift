@@ -65,10 +65,11 @@ struct CLICommandTests {
         let values = OutputFormat.allValueStrings
 
         // Then
-        #expect(values.count == 3)
+        #expect(values.count == 4)
         #expect(values.contains("text"))
         #expect(values.contains("json"))
         #expect(values.contains("xml"))
+        #expect(values.contains("xcode"))
     }
 }
 

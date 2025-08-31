@@ -50,53 +50,53 @@ func loopWithCondition(items: [Int]) -> [Int] {
 
 // MARK: - High Complexity (Clearly Above Threshold)
 
-/// Complexity: Cyclomatic 12, Cognitive 18 (Very High)
+/// Complexity: Cyclomatic 14, Cognitive 46 (Very High)
 func veryComplexFunction(data: [String: Any]) -> String {
-    guard let type = data["type"] as? String else {
+    guard let type = data["type"] as? String else { // +1
         return "unknown"
     }
     
-    if type == "user" {
-        if let age = data["age"] as? Int {
-            if age >= 18 {
-                if let country = data["country"] as? String {
-                    if country == "US" {
-                        if let state = data["state"] as? String {
-                            if state == "CA" {
+    if type == "user" { // +1
+        if let age = data["age"] as? Int { // +2
+            if age >= 18 { // +3
+                if let country = data["country"] as? String { // +4
+                    if country == "US" { // +5
+                        if let state = data["state"] as? String { // +6
+                            if state == "CA" { // +7
                                 return "adult_us_ca"
-                            } else if state == "NY" {
+                            } else if state == "NY" {  // +1
                                 return "adult_us_ny"
-                            } else {
+                            } else { // +1
                                 return "adult_us_other"
                             }
-                        } else {
+                        } else { // +1
                             return "adult_us_no_state"
                         }
-                    } else if country == "JP" {
+                    } else if country == "JP" { // +1
                         return "adult_jp"
-                    } else {
+                    } else { // +1
                         return "adult_other"
                     }
-                } else {
+                } else { // +1
                     return "adult_no_country"
                 }
-            } else {
+            } else { // +1
                 return "minor"
             }
-        } else {
+        } else { // +1
             return "no_age"
         }
-    } else if type == "system" {
-        if let priority = data["priority"] as? Int {
-            if priority > 5 {
+    } else if type == "system" { // +1
+        if let priority = data["priority"] as? Int { // +2
+            if priority > 5 { // +3
                 return "high_priority_system"
-            } else {
+            } else { // +1
                 return "low_priority_system"
             }
-        } else {
+        } else { // +1
             return "system_no_priority"
         }
-    } else {
+    } else { // +1
         return "unknown_type"
     }
 }
