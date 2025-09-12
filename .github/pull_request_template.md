@@ -26,26 +26,31 @@ Related to #(issue number)
 ## Changes Made
 
 ### Core Changes
-- 
-- 
+
+-
+-
 
 ### Tests
-- 
-- 
+
+-
+-
 
 ### Documentation
-- 
-- 
+
+-
+-
 
 ## Testing
 
 ### Test Plan
+
 - [ ] Unit tests pass
 - [ ] Integration tests pass
 - [ ] Manual testing completed
 - [ ] Complexity analysis on self passes
 
 ### Test Commands
+
 ```bash
 # Commands used to test this change
 swift test
@@ -61,6 +66,7 @@ swift run swift-complexity Sources --threshold 15
 - [ ] New complex code is justified and documented
 
 Run swift-complexity on your changes:
+
 ```bash
 # Analyze changed files for complexity
 swift run swift-complexity [changed-files] --threshold 15 --format text
@@ -110,18 +116,21 @@ swift run swift-complexity Sources --threshold 15 --recursive --format json
 ## Checklist
 
 ### Code Quality
+
 - [ ] Code follows the project's style guidelines
 - [ ] Self-review of code completed
 - [ ] Code is self-documenting with clear variable/function names
 - [ ] Complex logic is commented where necessary
 
 ### Testing
+
 - [ ] Tests added for new functionality
 - [ ] Existing tests updated as needed
 - [ ] All tests pass locally
 - [ ] Edge cases considered and tested
 
 ### Documentation
+
 - [ ] Documentation updated (if needed)
 - [ ] README updated (if needed)
 - [ ] CLAUDE.md updated (if architecture changes)

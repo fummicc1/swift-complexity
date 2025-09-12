@@ -3,7 +3,7 @@ name: PR Validation
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,74 +17,74 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        
-    - name: Analyze PR changes
-      id: changes
-      run: |
-        # Get changed files
-        CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
-        
-        # Count changes
-        SWIFT_FILES=$(echo "$CHANGED_FILES" | grep -E '\.swift$' | wc -l)
-        TEST_FILES=$(echo "$CHANGED_FILES" | grep -E 'Test.*\.swift$|.*Test\.swift$' | wc -l)
-        DOC_FILES=$(echo "$CHANGED_FILES" | grep -E '\.md$|docs/' | wc -l)
-        CONFIG_FILES=$(echo "$CHANGED_FILES" | grep -E 'Package\.swift|\.yml$|\.yaml$' | wc -l)
-        
-        echo "swift_files=$SWIFT_FILES" >> $GITHUB_OUTPUT
-        echo "test_files=$TEST_FILES" >> $GITHUB_OUTPUT
-        echo "doc_files=$DOC_FILES" >> $GITHUB_OUTPUT
-        echo "config_files=$CONFIG_FILES" >> $GITHUB_OUTPUT
-        
-        echo "Changed files analysis:"
-        echo "- Swift files: $SWIFT_FILES"
-        echo "- Test files: $TEST_FILES"
-        echo "- Documentation files: $DOC_FILES"
-        echo "- Configuration files: $CONFIG_FILES"
-        
-    - name: Comment PR analysis
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const swiftFiles = ${{ steps.changes.outputs.swift_files }};
-          const testFiles = ${{ steps.changes.outputs.test_files }};
-          const docFiles = ${{ steps.changes.outputs.doc_files }};
-          const configFiles = ${{ steps.changes.outputs.config_files }};
-          
-          let comment = '## 📊 PR Analysis\n\n';
-          comment += '| Type | Count |\n';
-          comment += '|------|-------|\n';
-          comment += `| Swift files | ${swiftFiles} |\n`;
-          comment += `| Test files | ${testFiles} |\n`;
-          comment += `| Documentation | ${docFiles} |\n`;
-          comment += `| Configuration | ${configFiles} |\n\n`;
-          
-          // Add recommendations
-          if (swiftFiles > 0 && testFiles === 0) {
-            comment += '⚠️ **Consider adding tests** for the Swift code changes.\n\n';
-          }
-          
-          if (swiftFiles > 5) {
-            comment += '📝 **Large PR**: Consider breaking this into smaller, focused PRs.\n\n';
-          }
-          
-          if (docFiles === 0 && swiftFiles > 0) {
-            comment += '📚 **Consider updating documentation** if new features were added.\n\n';
-          }
-          
-          comment += '---\n*Automated analysis by swift-complexity CI*';
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Analyze PR changes
+        id: changes
+        run: |
+          # Get changed files
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+
+          # Count changes
+          SWIFT_FILES=$(echo "$CHANGED_FILES" | grep -E '\.swift$' | wc -l)
+          TEST_FILES=$(echo "$CHANGED_FILES" | grep -E 'Test.*\.swift$|.*Test\.swift$' | wc -l)
+          DOC_FILES=$(echo "$CHANGED_FILES" | grep -E '\.md$|docs/' | wc -l)
+          CONFIG_FILES=$(echo "$CHANGED_FILES" | grep -E 'Package\.swift|\.yml$|\.yaml$' | wc -l)
+
+          echo "swift_files=$SWIFT_FILES" >> $GITHUB_OUTPUT
+          echo "test_files=$TEST_FILES" >> $GITHUB_OUTPUT
+          echo "doc_files=$DOC_FILES" >> $GITHUB_OUTPUT
+          echo "config_files=$CONFIG_FILES" >> $GITHUB_OUTPUT
+
+          echo "Changed files analysis:"
+          echo "- Swift files: $SWIFT_FILES"
+          echo "- Test files: $TEST_FILES"
+          echo "- Documentation files: $DOC_FILES"
+          echo "- Configuration files: $CONFIG_FILES"
+
+      - name: Comment PR analysis
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const swiftFiles = ${{ steps.changes.outputs.swift_files }};
+            const testFiles = ${{ steps.changes.outputs.test_files }};
+            const docFiles = ${{ steps.changes.outputs.doc_files }};
+            const configFiles = ${{ steps.changes.outputs.config_files }};
+
+            let comment = '## 📊 PR Analysis\n\n';
+            comment += '| Type | Count |\n';
+            comment += '|------|-------|\n';
+            comment += `| Swift files | ${swiftFiles} |\n`;
+            comment += `| Test files | ${testFiles} |\n`;
+            comment += `| Documentation | ${docFiles} |\n`;
+            comment += `| Configuration | ${configFiles} |\n\n`;
+
+            // Add recommendations
+            if (swiftFiles > 0 && testFiles === 0) {
+              comment += '⚠️ **Consider adding tests** for the Swift code changes.\n\n';
+            }
+
+            if (swiftFiles > 5) {
+              comment += '📝 **Large PR**: Consider breaking this into smaller, focused PRs.\n\n';
+            }
+
+            if (docFiles === 0 && swiftFiles > 0) {
+              comment += '📚 **Consider updating documentation** if new features were added.\n\n';
+            }
+
+            comment += '---\n*Automated analysis by swift-complexity CI*';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
 
   validation:
     name: Validation Suite
@@ -93,73 +93,73 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    
+
     steps:
-    - name: Checkout PR
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: '16.4'
-        
-    - name: Setup Swift
-      run: |
-        # macOS - use Xcode's Swift
-        echo "Using Xcode's Swift on macOS"
-        xcode-select --print-path
-        swift --version
-        
-    - name: Cache Swift packages
-      uses: actions/cache@v4
-      with:
-        path: |
-          .build
-          Package.resolved
-        key: ${{ runner.os }}-swift-pr-${{ hashFiles('Package.swift', 'Package.resolved') }}
-        
-    - name: Build PR changes
-      run: |
-        swift build --configuration debug
-        swift build --configuration release
-        
-    - name: Run comprehensive tests
-      run: |
-        swift test --enable-code-coverage --parallel
-        
-    - name: Install swift-format
-      run: |
-        brew install swift-format
-        
-    - name: Check formatting compliance
-      run: |
-        if ! swift-format --configuration .swift-format --recursive Sources Tests; then
-          echo "❌ Code formatting issues found. Run 'swift-format --configuration .swift-format --recursive Sources Tests --in-place' to fix."
-          exit 1
-        fi
-        echo "✅ Code formatting is compliant"
-        
-    - name: Run self-complexity analysis
-      run: |
-        # Build the tool first
-        swift build --configuration release
-        
-        # Run complexity analysis on changed Swift files only
-        CHANGED_SWIFT_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.swift' | grep -v Test | head -10)
-        
-        if [ ! -z "$CHANGED_SWIFT_FILES" ]; then
-          echo "Analyzing complexity of changed files:"
-          echo "$CHANGED_SWIFT_FILES"
-          
-          # Run analysis on each changed file
-          for file in $CHANGED_SWIFT_FILES; do
-            if [ -f "$file" ]; then
-              echo "Analyzing: $file"
-              swift run swift-complexity "$file" --threshold 20 --format json || true
-            fi
-          done
-        else
-          echo "No Swift source files changed in this PR"
-        fi
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16.4"
+
+      - name: Setup Swift
+        run: |
+          # macOS - use Xcode's Swift
+          echo "Using Xcode's Swift on macOS"
+          xcode-select --print-path
+          swift --version
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            Package.resolved
+          key: ${{ runner.os }}-swift-pr-${{ hashFiles('Package.swift', 'Package.resolved') }}
+
+      - name: Build PR changes
+        run: |
+          swift build --configuration debug
+          swift build --configuration release
+
+      - name: Run comprehensive tests
+        run: |
+          swift test --enable-code-coverage --parallel
+
+      - name: Install swift-format
+        run: |
+          brew install swift-format
+
+      - name: Check formatting compliance
+        run: |
+          if ! swift-format --configuration .swift-format --recursive Sources Tests; then
+            echo "❌ Code formatting issues found. Run 'swift-format --configuration .swift-format --recursive Sources Tests --in-place' to fix."
+            exit 1
+          fi
+          echo "✅ Code formatting is compliant"
+
+      - name: Run self-complexity analysis
+        run: |
+          # Build the tool first
+          swift build --configuration release
+
+          # Run complexity analysis on changed Swift files only
+          CHANGED_SWIFT_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.swift' | grep -v Test | head -10)
+
+          if [ ! -z "$CHANGED_SWIFT_FILES" ]; then
+            echo "Analyzing complexity of changed files:"
+            echo "$CHANGED_SWIFT_FILES"
+            
+            # Run analysis on each changed file
+            for file in $CHANGED_SWIFT_FILES; do
+              if [ -f "$file" ]; then
+                echo "Analyzing: $file"
+                swift run SwiftComplexityCLI "$file" --threshold 20 --format json || true
+              fi
+            done
+          else
+            echo "No Swift source files changed in this PR"
+          fi
