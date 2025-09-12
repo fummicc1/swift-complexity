@@ -167,7 +167,7 @@ Total: 2 functions, Average Cyclomatic: 4.0, Average Cognitive: 4.5
 ## Requirements
 
 - Swift 6.1+
-- macOS 14+ or Linux (Ubuntu 22.04+)
+- macOS 15+ or Linux
 
 ## License
 
