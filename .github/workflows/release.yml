@@ -222,14 +222,13 @@ jobs:
           VERSION="${{ needs.validate.outputs.version }}"
 
           # Generate changelog from git commits
-          if git tag --list "v*" | head -1 > /dev/null; then
-            PREVIOUS_TAG=$(git tag --list "v*" --sort=-version:refname | head -1)
-            if [[ "$PREVIOUS_TAG" != "v$VERSION" ]]; then
-              COMMITS=$(git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..HEAD)
-            else
-              COMMITS=$(git log --pretty=format:"- %s (%h)" HEAD~10..HEAD)
-            fi
+          # Get the previous tag, excluding the current release tag
+          PREVIOUS_TAG=$(git tag --list "v*" --sort=-version:refname | grep -v "^v${VERSION}$" | head -1)
+
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            COMMITS=$(git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..HEAD)
           else
+            # No previous tags found, use recent commits
             COMMITS=$(git log --pretty=format:"- %s (%h)" HEAD~10..HEAD)
           fi
 
