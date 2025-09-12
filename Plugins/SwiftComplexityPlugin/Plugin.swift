@@ -73,8 +73,8 @@ struct SwiftComplexityPlugin: BuildToolPlugin {
                 "--format", "xcode",  // Use Xcode diagnostics format
             ]
 
-            // Add threshold from build settings or default
-            let threshold = "10"  // Could be extracted from Xcode build settings if needed
+            // Add threshold from Xcode build settings or default
+            let threshold = ProcessInfo.processInfo.environment["SWIFT_COMPLEXITY_THRESHOLD"] ?? "10"
             arguments.append(contentsOf: ["--threshold", threshold])
 
             // Add input file paths
