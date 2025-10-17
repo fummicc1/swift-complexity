@@ -251,6 +251,34 @@ struct FunctionDetectionTests {
         #expect(names.contains("method1"))
         #expect(names.contains("method2"))
     }
+
+    @Test("protocol")
+    func protocolDeclTests() async throws {
+        // Given
+        let code = try loadFixture("protocol_decl")
+        let sourceFile = Parser.parse(source: code)
+        let detector = FunctionDetector(viewMode: .sourceAccurate)
+
+        // When
+        let functions = detector.detectFunctions(in: sourceFile)
+
+        // Then
+        #expect(functions.count == 0)
+    }
+
+    @Test("protocol_extension")
+    func protocolExtensionDeclTests() async throws {
+        // Given
+        let code = try loadFixture("protocol_extension_decl")
+        let sourceFile = Parser.parse(source: code)
+        let detector = FunctionDetector(viewMode: .sourceAccurate)
+
+        // When
+        let functions = detector.detectFunctions(in: sourceFile)
+
+        // Then
+        #expect(functions.count == 1)
+    }
 }
 
 // MARK: - Output Formatter Tests
