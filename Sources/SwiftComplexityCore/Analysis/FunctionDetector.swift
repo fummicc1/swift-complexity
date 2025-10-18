@@ -26,6 +26,10 @@ class FunctionDetector: SyntaxVisitor {
         return detectedFunctions
     }
 
+    override func visit(_ node: ProtocolDeclSyntax) -> SyntaxVisitorContinueKind {
+        return .skipChildren
+    }
+
     public override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
         let name = extractFunctionName(from: node)
         let signature = extractFunctionSignature(from: node)
