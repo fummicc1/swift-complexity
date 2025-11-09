@@ -5,6 +5,7 @@ class CognitiveComplexityCalculator: SyntaxVisitor {
     private var complexity: Int = 0
     private var nestingLevel: Int = 0
     private var logicalSequenceActive: Bool = false
+    private var isInElseBody: Bool = false
 
     func calculate(for codeBlock: CodeBlockSyntax?) -> Int {
         guard let codeBlock = codeBlock else { return 0 }
@@ -12,35 +13,56 @@ class CognitiveComplexityCalculator: SyntaxVisitor {
         complexity = 0
         nestingLevel = 0
         logicalSequenceActive = false
+        isInElseBody = false
         walk(codeBlock)
         return complexity
     }
 
     // If statements - increment + nesting penalty
+    // Special handling: elseBody is visited at the same nesting level as the if statement
+    // This ensures 'else if' is treated as a continuation, not a nested structure
     public override func visit(_ node: IfExprSyntax) -> SyntaxVisitorContinueKind {
-        complexity += 1 + nestingLevel
-        nestingLevel += 1
-
-        // Visit children with increased nesting
-        for child in node.children(viewMode: .sourceAccurate) {
-            walk(child)
+        // If this is an 'else if', it's a continuation and only adds +1
+        // Otherwise, add complexity with current nesting level
+        if isInElseBody {
+            complexity += 1
+            isInElseBody = false  // Reset flag after consuming it
+        } else {
+            complexity += 1 + nestingLevel
         }
 
+        // Increase nesting for the if-body
+        nestingLevel += 1
+        walk(node.body)
+
+        // Return to original nesting level for else-body
+        // This treats 'else if' as a continuation at the same level
         nestingLevel -= 1
+        if let elseBody = node.elseBody {
+            // Check if this is a standalone 'else' (not 'else if')
+            // An 'else if' has a conditionElementList child, while standalone 'else' doesn't
+            let hasConditionList = elseBody.children(viewMode: .sourceAccurate)
+                .contains { $0.kind == .conditionElementList }
+
+            if hasConditionList {
+                // This is 'else if' - set flag for the nested IfExprSyntax
+                isInElseBody = true
+            } else {
+                // Standalone else adds +1 complexity without nesting penalty
+                complexity += 1
+            }
+
+            walk(elseBody)
+        }
+
         return .skipChildren
     }
 
-    // Guard statements - increment + nesting penalty
+    // Guard statements - increment only (no nesting penalty)
+    // The guard condition itself doesn't create nesting
     public override func visit(_ node: GuardStmtSyntax) -> SyntaxVisitorContinueKind {
-        complexity += 1 + nestingLevel
-        nestingLevel += 1
-
-        for child in node.children(viewMode: .sourceAccurate) {
-            walk(child)
-        }
-
-        nestingLevel -= 1
-        return .skipChildren
+        complexity += 1
+        return .visitChildren
     }
 
     // While loops - increment + nesting penalty

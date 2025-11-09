@@ -209,6 +209,63 @@ struct ComplexityCalculatorTests {
                 complexity == 3,
                 "Function with nested conditions should have cognitive complexity 3")
         }
+
+        @Test("Else-if chain (Issue #6)")
+        func elseIfChain() throws {
+            // Given
+            let code = try loadFixture("else_if_chain")
+            let sourceFile = Parser.parse(source: code)
+            let calculator = CognitiveComplexityCalculator(viewMode: .sourceAccurate)
+
+            // When
+            guard let function = sourceFile.statements.first?.item.as(FunctionDeclSyntax.self)
+            else {
+                Issue.record("Failed to parse function declaration")
+                return
+            }
+            let complexity = calculator.calculate(for: function.body)
+
+            // Then
+            // if value == 1: +1
+            // else if value == 2: +1 (continuation, no nesting penalty)
+            // else: +1 (no nesting penalty)
+            // Total: 3
+            #expect(
+                complexity == 3,
+                "Else-if chain should have cognitive complexity 3 (if +1, else if +1, else +1)"
+            )
+        }
+
+        @Test("Deeply nested else-if chains (Issue #6)")
+        func deeplyNestedElseIfChains() throws {
+            // Given
+            let code = try loadFixture("issue6_nested_else_if")
+            let sourceFile = Parser.parse(source: code)
+            let calculator = CognitiveComplexityCalculator(viewMode: .sourceAccurate)
+
+            // When
+            guard let function = sourceFile.statements.first?.item.as(FunctionDeclSyntax.self)
+            else {
+                Issue.record("Failed to parse function declaration")
+                return
+            }
+            let complexity = calculator.calculate(for: function.body)
+
+            // Then
+            // This tests the fix for Issue #6:
+            // https://github.com/fummicc1/swift-complexity/issues/6
+            //
+            // Breakdown (simplified):
+            // - guard: +1
+            // - if type == "user": +1
+            // - nested if statements with increasing nesting penalties
+            // - else if and else statements: +1 each (no nesting penalty)
+            //
+            // Expected: 46 (as documented in the issue)
+            #expect(
+                complexity == 46,
+                "Deeply nested else-if chains should have cognitive complexity 46")
+        }
     }
 }
 
