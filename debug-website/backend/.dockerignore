@@ -1,0 +1,30 @@
+# Build artifacts
+.build/
+*.xcodeproj
+*.xcworkspace
+
+# Swift Package Manager
+.swiftpm/
+Package.resolved
+
+# Xcode
+xcuserdata/
+DerivedData/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+README*
+
+# Tests
+Tests/
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
