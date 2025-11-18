@@ -5,22 +5,29 @@ A command-line tool to analyze Swift code complexity and quality metrics using s
 ## Features
 
 - **Multiple Complexity Metrics**: Supports cyclomatic and cognitive complexity analysis
-- **Xcode Integration**: Seamless integration with Xcode via Build Tool Plugin for complexity feedback during build phase.
+- **Web-based Debug Interface**: Interactive browser-based complexity analyzer ([Try it online](https://swift-complexity.fummicc1.dev))
+- **Xcode Integration**: Seamless integration with Xcode via Build Tool Plugin for complexity feedback during build phase
 - **Xcode Diagnostics**: Display complexity warnings and errors directly in Xcode editor with accurate line numbers
 - **Configurable Thresholds**: Set custom complexity thresholds via Xcode Build Settings or environment variables
 - **Exit Code Integration**: Returns exit code 1 when complexity thresholds are exceeded, perfect for CI/CD pipelines
 - **Multiple Output Formats**: Text, JSON, XML, and Xcode diagnostics output for different use cases
 - **Flexible Analysis**: Single files, directories, or recursive directory analysis
 - **Swift Syntax Based**: Uses `swift-syntax` for accurate Swift code parsing
-- **Single Package Dependency**: Both CLI tool and Xcode plugin available from one package
+- **Cross-Platform Support**: CLI works on macOS and Linux, library works on iOS 13+.
 - **Extensible Architecture**: Designed to support additional quality metrics in the future
 
 ## Quick Start
 
+### Web Interface (Try Online)
+
+Visit [swift-complexity.fummicc1.dev](https://swift-complexity.fummicc1.dev) to analyze Swift code instantly in your browser.
+
+![Web Interface](docs/imgs/website.png)
+
 ### Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/fummicc1/swift-complexity
 cd swift-complexity
 swift build -c release
 ```
@@ -69,14 +76,23 @@ swift run SwiftComplexityCLI Sources --threshold 15 --recursive
 - **[Complexity Metrics](docs/user-guide/complexity-metrics.md)**: Detailed metric explanations and examples
 - **[Output Formats](docs/user-guide/output-formats.md)**: JSON, XML, and text format specifications
 - **[Development Guide](docs/development/DEVELOPMENT.md)**: Setup for contributors
+- **[Debug Website](debug-website/)**: Web-based interactive analyzer documentation
 
 ## Package Structure
 
-Unified package with three targets:
+Unified package with multiple components:
 
-- **SwiftComplexityCore**: Core analysis library
+### Core Package
+
+- **SwiftComplexityCore**: Core analysis library (supports macOS 14+, iOS 13+)
 - **SwiftComplexityCLI**: Command-line interface
 - **SwiftComplexityPlugin**: Xcode Build Tool Plugin
+
+### Debug Website
+
+- **Frontend**: Next.js application deployed on Cloudflare Workers
+- **Backend**: Vapor 4 API containerized on Cloudflare Containers.
+- **Live Demo**: [swift-complexity.fummicc1.dev](https://swift-complexity.fummicc1.dev)
 
 ## Usage Examples
 
@@ -137,9 +153,11 @@ let package = Package(
 ### Features
 
 - **Real-time feedback**: Complexity warnings appear directly in Xcode editor
-- **Accurate positioning**: Errors show at exact function locations  
+- **Accurate positioning**: Errors show at exact function locations
 - **Build integration**: Builds fail when thresholds are exceeded
 - **Configurable per target**: Different thresholds for different modules
+
+![Xcode Output](docs/imgs/xcode-output.png)
 
 ## Output Examples
 
@@ -166,8 +184,15 @@ Total: 2 functions, Average Cyclomatic: 4.0, Average Cognitive: 4.5
 
 ## Requirements
 
+### CLI Tool
+
 - Swift 6.1+
-- macOS 15+ or Linux
+- macOS 14+ or Linux
+
+### Core Library
+
+- Swift 6.1+
+- macOS 14+, iOS 13+, or Linux
 
 ## License
 
