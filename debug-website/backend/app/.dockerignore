@@ -19,9 +19,6 @@ DerivedData/
 *.md
 README*
 
-# Tests
-Tests/
-
 # IDE
 .vscode/
 .idea/

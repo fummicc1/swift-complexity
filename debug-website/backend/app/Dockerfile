@@ -15,14 +15,10 @@ RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
 # Set up a build area
 WORKDIR /build
 
-# Copy entire swift-complexity project (backend needs SwiftComplexityCore)
-# The build context should be the project root (../../.. from this Dockerfile)
+# Copy only the backend app directory
+# The build context should be the backend app directory (. from this Dockerfile)
+# SwiftComplexityCore will be downloaded from GitHub via Package.swift
 COPY . .
-
-# The Package.swift is at /build/debug-website/backend/app/Package.swift
-# The SwiftComplexityCore dependency is at /build/Sources/
-# We need to adjust the working directory
-WORKDIR /build/debug-website/backend/app
 
 # Build with optimizations
 RUN swift build -c release
@@ -49,7 +45,7 @@ RUN useradd --user-group --create-home --system --skel /dev/null --home-dir /app
 WORKDIR /app
 
 # Copy built executable from build stage
-COPY --from=build --chown=vapor:vapor /build/debug-website/backend/app/.build/release/App /app/
+COPY --from=build --chown=vapor:vapor /build/.build/release/App /app/
 
 # Ensure executable has correct permissions
 RUN chmod +x /app/App

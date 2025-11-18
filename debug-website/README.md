@@ -18,7 +18,8 @@ Web-based debugging interface for [swift-complexity](https://github.com/fummicc1
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **Editor**: Monaco Editor (@monaco-editor/react)
-- **Deployment**: Cloudflare Pages
+- **Build Adapter**: OpenNext for Cloudflare
+- **Deployment**: Cloudflare Workers
 
 ### Backend (Vapor)
 - **Framework**: Vapor 4
@@ -62,11 +63,14 @@ npm install
 cp .env.example .env.local
 # Edit .env.local to point to your backend
 
-# Run development server
+# Run development server (Next.js)
 npm run dev
+
+# Or run with Wrangler for local Workers environment
+npx wrangler dev
 ```
 
-The frontend will be available at `http://localhost:3000`.
+The frontend will be available at `http://localhost:3000` (npm run dev) or `http://localhost:8788` (wrangler dev).
 
 ### Testing
 
@@ -86,27 +90,30 @@ npm run type-check
 
 ## 📦 Deployment
 
-### Cloudflare Pages (Frontend)
+### Cloudflare Workers (Frontend)
 
 ```bash
 cd debug-website/frontend
 
-# Build for production
-npm run build
+# Build with OpenNext for Cloudflare Workers
+npm run open-next:build
 
-# Deploy to Cloudflare Pages
-npx wrangler pages deploy .next
+# Deploy to Cloudflare Workers
+npx wrangler deploy --env production
 
-# Or set up automatic deployment via GitHub integration
+# Or use the combined command
+npm run deploy
 ```
+
+The OpenNext build adapter converts Next.js into a format compatible with Cloudflare Workers.
 
 ### Cloudflare Containers (Backend)
 
 ```bash
-cd debug-website/backend
+cd debug-website/backend/app
 
-# Build Docker image
-docker build -t swift-complexity-api -f Dockerfile ../..
+# Build Docker image (from app directory)
+docker build -t swift-complexity-api .
 
 # Deploy to Cloudflare Containers
 npx wrangler deploy
@@ -117,12 +124,25 @@ npx wrangler deploy
 ### Environment Variables
 
 #### Frontend (.env.local)
+
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
+For production, configure environment variables in `wrangler.toml`:
+
+```toml
+[vars]
+NEXT_PUBLIC_API_URL = "http://localhost:8787"
+
+[env.production.vars]
+NEXT_PUBLIC_API_URL = "https://api.swift-complexity.fummicc1.dev"
+```
+
 #### Backend (Production)
+
 Set these in Cloudflare Workers dashboard or wrangler.toml:
+
 ```bash
 LOG_LEVEL=info
 ```
@@ -198,8 +218,11 @@ The backend includes a multi-stage Dockerfile optimized for Cloudflare Container
 
 - Backend uses Swift 6.1 with strict concurrency checking
 - Frontend uses React 19 with Next.js App Router
+- OpenNext adapter (`@opennextjs/cloudflare`) enables Next.js on Cloudflare Workers
+- Image optimization is disabled for Workers compatibility
 - CORS configured to allow requests from `swift-complexity.fummicc1.dev`
 - All API responses are JSON-encoded
+- Static assets are served via Workers Assets binding
 
 ## 🤝 Contributing
 
