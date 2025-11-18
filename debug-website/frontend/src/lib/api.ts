@@ -4,7 +4,7 @@ import type {
   FormatResponse,
 } from "@/types/complexity";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 export async function analyzeCode(
   request: AnalyzeRequest

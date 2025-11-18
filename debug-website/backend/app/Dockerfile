@@ -9,7 +9,6 @@ RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
     && apt-get -q dist-upgrade -y \
     && apt-get -q install -y \
       ca-certificates \
-      tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up a build area
@@ -21,7 +20,7 @@ WORKDIR /build
 COPY . .
 
 # Build with optimizations
-RUN swift build -c release
+RUN swift build -c release --static-swift-stdlib
 
 # ================================
 # Run stage
