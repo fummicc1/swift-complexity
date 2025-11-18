@@ -1,0 +1,43 @@
+name = "swift-complexity-worker"
+main = "src/index.ts"
+compatibility_date = "2025-11-17"
+workers_dev = false
+
+[[durable_objects.bindings]]
+name = "SWIFT_COMPLEXITY_CONTAINER"
+class_name = "SwiftComplexityContainer"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SwiftComplexityContainer"]
+
+[observability]
+enabled = true
+
+[vars]
+PORT = "8080"
+ENVIRONMENT = "develop"
+LOG_LEVEL = "debug"
+
+# Production environment
+[env.production]
+name = "swift-complexity-worker-prod"
+[[env.production.containers]]
+class_name = "SwiftComplexityContainer"
+image = "../app/Dockerfile"
+max_instances = 2
+[[env.production.durable_objects.bindings]]
+name = "SWIFT_COMPLEXITY_CONTAINER"
+class_name = "SwiftComplexityContainer"
+[[env.production.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SwiftComplexityContainer"]
+[[env.production.routes]]
+pattern = "api.swift-complexity.fummicc1.dev"
+custom_domain = true
+[env.production.observability]
+enabled = true
+[env.production.vars]
+PORT = "8080"
+ENVIRONMENT = "production"
+LOG_LEVEL = "info"

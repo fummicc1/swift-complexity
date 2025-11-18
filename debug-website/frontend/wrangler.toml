@@ -1,0 +1,28 @@
+name = "swift-complexity-web"
+main = ".open-next/worker.js"
+compatibility_date = "2025-11-17"
+compatibility_flags = ["nodejs_compat"]
+
+# Static assets binding (required for OpenNext)
+[assets]
+binding = "ASSETS"
+directory = ".open-next/assets"
+
+# Observability
+[observability]
+enabled = true
+
+# Default environment variables
+[vars]
+NEXT_PUBLIC_API_URL = "http://localhost:8787"
+
+# Production environment
+[env.production]
+name = "swift-complexity-web-prod"
+
+[[env.production.routes]]
+pattern = "swift-complexity.fummicc1.dev"
+custom_domain = true
+
+[env.production.vars]
+NEXT_PUBLIC_API_URL = "https://api.swift-complexity.fummicc1.dev"

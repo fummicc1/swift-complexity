@@ -1,0 +1,38 @@
+{
+  "name": "swift-complexity-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker proxy for Swift Complexity API",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --env production",
+    "deploy:prod": "npm run deploy",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "cloudflare-workers",
+    "cloudflare-containers",
+    "swift",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@cloudflare/containers": "^0.0.19"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/parser": "^6.13.1",
+    "eslint": "^8.57.1",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.2",
+    "wrangler": "^4.23.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

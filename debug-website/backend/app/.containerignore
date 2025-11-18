@@ -1,0 +1,16 @@
+# Same as .dockerignore
+.build/
+*.xcodeproj
+*.xcworkspace
+.swiftpm/
+Package.resolved
+xcuserdata/
+DerivedData/
+.git/
+.gitignore
+*.md
+README*
+Tests/
+.vscode/
+.idea/
+.DS_Store
