@@ -1,7 +1,7 @@
 import Foundation
 
 /// Available output formats for complexity analysis results
-public enum OutputFormat: String, CaseIterable {
+public enum OutputFormat: String, CaseIterable, Codable, Sendable {
     case text
     case json
     case xml
