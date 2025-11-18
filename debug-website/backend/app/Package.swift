@@ -9,8 +9,7 @@ let package = Package(
     dependencies: [
         // Vapor web framework
         .package(url: "https://github.com/vapor/vapor.git", from: "4.99.0"),
-        // SwiftComplexityCore from parent project
-        .package(path: "../..")
+        .package(url: "https://github.com/fummicc1/swift-complexity.git", branch: "main"),
     ],
     targets: [
         .executableTarget(

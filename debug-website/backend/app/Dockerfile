@@ -1,7 +1,7 @@
 # ================================
 # Build stage
 # ================================
-FROM swift:6.1-jammy as build
+FROM swift:6.1-jammy AS build
 
 # Install OS updates
 RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
@@ -16,15 +16,16 @@ RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
 WORKDIR /build
 
 # Copy entire swift-complexity project (backend needs SwiftComplexityCore)
+# The build context should be the project root (../../.. from this Dockerfile)
 COPY . .
 
-# Change to backend directory
-WORKDIR /build/debug-website/backend
+# The Package.swift is at /build/debug-website/backend/app/Package.swift
+# The SwiftComplexityCore dependency is at /build/Sources/
+# We need to adjust the working directory
+WORKDIR /build/debug-website/backend/app
 
 # Build with optimizations
-RUN swift build -c release \
-    --static-swift-stdlib \
-    -Xlinker -s
+RUN swift build -c release
 
 # ================================
 # Run stage
@@ -48,7 +49,7 @@ RUN useradd --user-group --create-home --system --skel /dev/null --home-dir /app
 WORKDIR /app
 
 # Copy built executable from build stage
-COPY --from=build --chown=vapor:vapor /build/debug-website/backend/.build/release/App /app/
+COPY --from=build --chown=vapor:vapor /build/debug-website/backend/app/.build/release/App /app/
 
 # Ensure executable has correct permissions
 RUN chmod +x /app/App
