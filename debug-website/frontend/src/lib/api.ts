@@ -8,7 +8,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export async function analyzeCode(
   request: AnalyzeRequest
-): Promise<ComplexityResult | FormatResponse> {
+): Promise<{result: ComplexityResult} | {formatted: FormatResponse}> {
   const response = await fetch(`${API_URL}/api/v1/analyze`, {
     method: "POST",
     headers: {
@@ -23,9 +23,9 @@ export async function analyzeCode(
 
   // If format was specified, return FormatResponse
   if (request.format) {
-    return (await response.json()) as FormatResponse;
+    return (await response.json()) as {formatted: FormatResponse};
   }
 
   // Otherwise return ComplexityResult
-  return (await response.json()) as ComplexityResult;
+  return (await response.json()) as {result: ComplexityResult};
 }

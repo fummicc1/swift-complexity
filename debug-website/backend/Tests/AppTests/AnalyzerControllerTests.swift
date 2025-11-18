@@ -42,8 +42,8 @@ final class AnalyzerControllerTests: XCTestCase {
             try req.content.encode(request)
         }, afterResponse: { res async in
             XCTAssertEqual(res.status, .ok)
-            let result = try res.content.decode(ComplexityResult.self)
-            XCTAssertEqual(result.functions.count, 1)
+            let response = try res.content.decode(AnalyzeResponse.self)
+            XCTAssertEqual(response.result.functions.count, 1)
         })
     }
 

@@ -5,9 +5,12 @@ public func configure(_ app: Application) async throws {
     // Serve files from /Public folder
     // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
 
-    // Configure CORS middleware to allow frontend access
+    // Load application configuration based on environment
+    let config = AppConfiguration.create(for: app.environment)
+
+    // Configure CORS middleware
     let corsConfiguration = CORSMiddleware.Configuration(
-        allowedOrigin: .custom("https://swift-complexity.fummicc1.dev"),
+        allowedOrigin: config.corsAllowedOrigin,
         allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH],
         allowedHeaders: [.accept, .authorization, .contentType, .origin, .xRequestedWith, .userAgent, .accessControlAllowOrigin]
     )

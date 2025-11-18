@@ -42,12 +42,11 @@ struct AnalyzerController: RouteCollection {
                 options: options
             )
 
-            let response = FormatResponse(formatted: formatted)
-            return try await response.encodeResponse(for: req)
+            return try await FormatResponse(formatted: formatted).encodeResponse(for: req)
         }
 
         // Otherwise return raw ComplexityResult
-        return try await result.encodeResponse(for: req)
+        return try await AnalyzeResponse(result: result).encodeResponse(for: req)
     }
 
     // POST /api/v1/batch-analyze
@@ -109,6 +108,10 @@ struct AnalyzeRequest: Content {
     let showCyclomaticOnly: Bool?
     let showCognitiveOnly: Bool?
     let threshold: Int?
+}
+
+struct AnalyzeResponse: Content {
+    let result: ComplexityResult
 }
 
 struct BatchAnalyzeRequest: Content {

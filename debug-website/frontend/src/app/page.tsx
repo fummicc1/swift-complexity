@@ -30,7 +30,7 @@ export default function Home() {
       });
 
       // Response should be ComplexityResult when format is not specified
-      setResult(response as ComplexityResult);
+      setResult("result" in response ? response.result : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       setResult(null);
