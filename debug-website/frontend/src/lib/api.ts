@@ -4,12 +4,11 @@ import type {
   FormatResponse,
 } from "@/types/complexity";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
 export async function analyzeCode(
   request: AnalyzeRequest
 ): Promise<{result: ComplexityResult} | {formatted: FormatResponse}> {
-  const response = await fetch(`${API_URL}/api/v1/analyze`, {
+  // Next.js Route Handlerを呼び出す（本番・開発共通）
+  const response = await fetch("/api/analyze", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

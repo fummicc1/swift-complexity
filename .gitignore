@@ -8,3 +8,11 @@ DerivedData/
 .netrc
 .tmp/
 .build/
+
+# Debug website build artifacts
+debug-website/frontend/.next/
+debug-website/frontend/.open-next/
+debug-website/frontend/node_modules/
+debug-website/node_modules/
+debug-website/package-lock.json
+debug-website/wrangler.toml
