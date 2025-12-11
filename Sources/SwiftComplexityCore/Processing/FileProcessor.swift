@@ -43,8 +43,21 @@ public actor FileProcessor: FileProcessing {
     private let analyzer: ComplexityAnalyzer
     private let fileManager: FileManager
 
-    public init(analyzer: ComplexityAnalyzer = ComplexityAnalyzer()) {
+    /// Initialize with a custom analyzer
+    public init(analyzer: ComplexityAnalyzer) {
         self.analyzer = analyzer
+        self.fileManager = FileManager.default
+    }
+
+    /// Initialize with a default analyzer (no LCOM4 support)
+    public init() throws {
+        self.analyzer = try ComplexityAnalyzer()
+        self.fileManager = FileManager.default
+    }
+
+    /// Initialize with project root for LCOM4 support
+    public init(projectRoot: URL) throws {
+        self.analyzer = try ComplexityAnalyzer(projectRoot: projectRoot)
         self.fileManager = FileManager.default
     }
 

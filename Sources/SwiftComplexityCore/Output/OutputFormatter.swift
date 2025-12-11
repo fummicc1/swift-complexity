@@ -3,13 +3,18 @@ import Foundation
 public struct OutputOptions {
     public let showCyclomaticOnly: Bool
     public let showCognitiveOnly: Bool
+    public let showLCOM4: Bool
     public let threshold: Int?
 
     public init(
-        showCyclomaticOnly: Bool = false, showCognitiveOnly: Bool = false, threshold: Int? = nil
+        showCyclomaticOnly: Bool = false,
+        showCognitiveOnly: Bool = false,
+        showLCOM4: Bool = false,
+        threshold: Int? = nil
     ) {
         self.showCyclomaticOnly = showCyclomaticOnly
         self.showCognitiveOnly = showCognitiveOnly
+        self.showLCOM4 = showLCOM4
         self.threshold = threshold
     }
 }
@@ -36,20 +41,38 @@ public class OutputFormatter {
         var output = ""
 
         for result in results {
-            if result.functions.isEmpty {
+            if result.functions.isEmpty && result.classCohesions == nil {
                 continue
             }
 
             output += "File: \(result.filePath)\n"
-            output += formatTableHeader(options: options)
-            output += formatTableSeparator(options: options)
 
-            for function in result.functions {
-                output += formatTableRow(function: function, options: options)
+            // Function complexity table (unless only LCOM4 is requested)
+            if !options.showLCOM4 && !result.functions.isEmpty {
+                output += formatTableHeader(options: options)
+                output += formatTableSeparator(options: options)
+
+                for function in result.functions {
+                    output += formatTableRow(function: function, options: options)
+                }
+
+                output += formatTableSeparator(options: options)
+                output += formatSummary(summary: result.summary, options: options)
             }
 
-            output += formatTableSeparator(options: options)
-            output += formatSummary(summary: result.summary, options: options)
+            // LCOM4 cohesion table
+            if options.showLCOM4 || !result.functions.isEmpty {
+                if let classCohesions = result.classCohesions {
+                    if !options.showLCOM4 && !result.functions.isEmpty {
+                        output += "\n"
+                    }
+                    output += formatCohesionTable(classCohesions: classCohesions)
+                    if let cohesionSummary = result.cohesionSummary {
+                        output += formatCohesionSummary(summary: cohesionSummary)
+                    }
+                }
+            }
+
             output += "\n"
         }
 
@@ -113,6 +136,50 @@ public class OutputFormatter {
         }
     }
 
+    // MARK: - LCOM4 Cohesion Formatting
+
+    private func formatCohesionTable(classCohesions: [ClassCohesion]) -> String {
+        var output = "Class Cohesion (LCOM4):\n"
+        output += formatCohesionTableHeader()
+        output += formatCohesionTableSeparator()
+
+        for cohesion in classCohesions {
+            output += formatCohesionTableRow(cohesion: cohesion)
+        }
+
+        output += formatCohesionTableSeparator()
+        return output
+    }
+
+    private func formatCohesionTableHeader() -> String {
+        let nameColumn = "Class/Struct".padding(toLength: 25, withPad: " ", startingAt: 0)
+        return "| \(nameColumn) | Type   | LCOM4 | Methods | Properties | Cohesion   |\n"
+    }
+
+    private func formatCohesionTableSeparator() -> String {
+        return
+            "+---------------------------+--------+-------+---------+------------+------------+\n"
+    }
+
+    private func formatCohesionTableRow(cohesion: ClassCohesion) -> String {
+        let name = cohesion.name.padding(toLength: 25, withPad: " ", startingAt: 0)
+        let type = cohesion.type.rawValue.padding(toLength: 6, withPad: " ", startingAt: 0)
+        let lcom4 = String(cohesion.lcom4).padding(toLength: 5, withPad: " ", startingAt: 0)
+        let methods = String(cohesion.methodCount).padding(toLength: 7, withPad: " ", startingAt: 0)
+        let properties = String(cohesion.propertyCount).padding(
+            toLength: 10, withPad: " ", startingAt: 0)
+        let cohesionLevel = cohesion.cohesionLevel.rawValue.padding(
+            toLength: 10, withPad: " ", startingAt: 0)
+
+        return "| \(name) | \(type) | \(lcom4) | \(methods) | \(properties) | \(cohesionLevel) |\n"
+    }
+
+    private func formatCohesionSummary(summary: CohesionSummary) -> String {
+        let avgLCOM4 = String(format: "%.2f", summary.averageLCOM4)
+        return
+            "Total: \(summary.totalClasses) classes, Average LCOM4: \(avgLCOM4), Low cohesion: \(summary.classesWithLowCohesion)\n"
+    }
+
     private func formatAsJSON(results: [ComplexityResult], options: OutputOptions) -> String {
         do {
             let jsonData = try JSONEncoder().encode(["files": results])
@@ -129,29 +196,60 @@ public class OutputFormatter {
         for result in results {
             xml += "  <file path=\"\(xmlEscape(result.filePath))\">\n"
 
-            for function in result.functions {
-                xml += "    <function name=\"\(xmlEscape(function.name))\" "
-                xml += "signature=\"\(xmlEscape(function.signature))\" "
-                xml += "line=\"\(function.location.line)\" "
-                xml += "column=\"\(function.location.column)\">\n"
+            // Function complexity
+            if !result.functions.isEmpty {
+                for function in result.functions {
+                    xml += "    <function name=\"\(xmlEscape(function.name))\" "
+                    xml += "signature=\"\(xmlEscape(function.signature))\" "
+                    xml += "line=\"\(function.location.line)\" "
+                    xml += "column=\"\(function.location.column)\">\n"
+                    xml +=
+                        "      <cyclomatic-complexity>\(function.cyclomaticComplexity)</cyclomatic-complexity>\n"
+                    xml +=
+                        "      <cognitive-complexity>\(function.cognitiveComplexity)</cognitive-complexity>\n"
+                    xml += "    </function>\n"
+                }
+
+                xml += "    <summary>\n"
+                xml += "      <total-functions>\(result.summary.totalFunctions)</total-functions>\n"
                 xml +=
-                    "      <cyclomatic-complexity>\(function.cyclomaticComplexity)</cyclomatic-complexity>\n"
+                    "      <average-cyclomatic-complexity>\(result.summary.averageCyclomaticComplexity)</average-cyclomatic-complexity>\n"
                 xml +=
-                    "      <cognitive-complexity>\(function.cognitiveComplexity)</cognitive-complexity>\n"
-                xml += "    </function>\n"
+                    "      <average-cognitive-complexity>\(result.summary.averageCognitiveComplexity)</average-cognitive-complexity>\n"
+                xml +=
+                    "      <max-cyclomatic-complexity>\(result.summary.maxCyclomaticComplexity)</max-cyclomatic-complexity>\n"
+                xml +=
+                    "      <max-cognitive-complexity>\(result.summary.maxCognitiveComplexity)</max-cognitive-complexity>\n"
+                xml += "    </summary>\n"
             }
 
-            xml += "    <summary>\n"
-            xml += "      <total-functions>\(result.summary.totalFunctions)</total-functions>\n"
-            xml +=
-                "      <average-cyclomatic-complexity>\(result.summary.averageCyclomaticComplexity)</average-cyclomatic-complexity>\n"
-            xml +=
-                "      <average-cognitive-complexity>\(result.summary.averageCognitiveComplexity)</average-cognitive-complexity>\n"
-            xml +=
-                "      <max-cyclomatic-complexity>\(result.summary.maxCyclomaticComplexity)</max-cyclomatic-complexity>\n"
-            xml +=
-                "      <max-cognitive-complexity>\(result.summary.maxCognitiveComplexity)</max-cognitive-complexity>\n"
-            xml += "    </summary>\n"
+            // Class cohesion (LCOM4)
+            if let classCohesions = result.classCohesions {
+                for cohesion in classCohesions {
+                    xml += "    <class name=\"\(xmlEscape(cohesion.name))\" "
+                    xml += "type=\"\(cohesion.type.rawValue)\" "
+                    xml += "line=\"\(cohesion.location.line)\" "
+                    xml += "column=\"\(cohesion.location.column)\">\n"
+                    xml += "      <lcom4>\(cohesion.lcom4)</lcom4>\n"
+                    xml += "      <method-count>\(cohesion.methodCount)</method-count>\n"
+                    xml += "      <property-count>\(cohesion.propertyCount)</property-count>\n"
+                    xml +=
+                        "      <cohesion-level>\(cohesion.cohesionLevel.rawValue)</cohesion-level>\n"
+                    xml += "    </class>\n"
+                }
+
+                if let cohesionSummary = result.cohesionSummary {
+                    xml += "    <cohesion-summary>\n"
+                    xml += "      <total-classes>\(cohesionSummary.totalClasses)</total-classes>\n"
+                    xml +=
+                        "      <average-lcom4>\(cohesionSummary.averageLCOM4)</average-lcom4>\n"
+                    xml += "      <max-lcom4>\(cohesionSummary.maxLCOM4)</max-lcom4>\n"
+                    xml +=
+                        "      <low-cohesion-classes>\(cohesionSummary.classesWithLowCohesion)</low-cohesion-classes>\n"
+                    xml += "    </cohesion-summary>\n"
+                }
+            }
+
             xml += "  </file>\n"
         }
 
@@ -178,6 +276,7 @@ public class OutputFormatter {
         let threshold = options.threshold ?? 10
 
         for result in results {
+            // Function complexity diagnostics
             for function in result.functions {
                 let cyclomatic = function.cyclomaticComplexity
                 let cognitive = function.cognitiveComplexity
@@ -193,6 +292,20 @@ public class OutputFormatter {
                     // Format: <file>:<line>:<column>: <severity>: <message>
                     output +=
                         "\(result.filePath):\(function.location.line):\(function.location.column): \(severity): \(message)\n"
+                }
+            }
+
+            // Class cohesion diagnostics
+            if let classCohesions = result.classCohesions {
+                for cohesion in classCohesions {
+                    if cohesion.cohesionLevel == .low {
+                        let severity = cohesion.lcom4 >= 5 ? "error" : "warning"
+                        let message =
+                            "\(cohesion.type.rawValue.capitalized) '\(cohesion.name)' has low cohesion (LCOM4: \(cohesion.lcom4), Level: \(cohesion.cohesionLevel.rawValue))"
+
+                        output +=
+                            "\(result.filePath):\(cohesion.location.line):\(cohesion.location.column): \(severity): \(message)\n"
+                    }
                 }
             }
         }

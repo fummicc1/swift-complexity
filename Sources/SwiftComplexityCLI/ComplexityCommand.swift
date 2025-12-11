@@ -73,6 +73,19 @@ public struct ComplexityCommand: AsyncParsableCommand {
     public var cognitiveOnly: Bool = false
 
     @Flag(
+        name: .long,
+        help: "Show LCOM4 class cohesion metrics"
+    )
+    public var lcom4: Bool = false
+
+    @Option(
+        name: .long,
+        help: "Project root directory for LCOM4 analysis (required for accurate semantic analysis)",
+        completion: .directory
+    )
+    public var projectRoot: String?
+
+    @Flag(
         name: .shortAndLong,
         help: "Recursively analyze directories"
     )
@@ -102,11 +115,24 @@ public struct ComplexityCommand: AsyncParsableCommand {
             throw ExitCode.failure
         }
 
+        // Validate LCOM4 options
+        if lcom4 && projectRoot == nil {
+            print(
+                "Warning: --lcom4 requires --project-root for accurate semantic analysis. Using basic syntax analysis."
+            )
+        }
+
         if verbose {
             print("swift-complexity v\(Self.configuration.version)")
             print("Analyzing paths: \(paths.joined(separator: ", "))")
             print("Output format: \(format)")
             print("Recursive: \(recursive)")
+            if lcom4 {
+                print("LCOM4 analysis: enabled")
+                if let projectRoot = projectRoot {
+                    print("Project root: \(projectRoot)")
+                }
+            }
             if !exclude.isEmpty {
                 print("Exclude patterns: \(exclude.joined(separator: ", "))")
             }
@@ -117,7 +143,15 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
         // Execute analysis
         do {
-            let analyzer = ComplexityAnalyzer()
+            // Create analyzer with optional project root for LCOM4
+            let analyzer: ComplexityAnalyzer
+            if lcom4, let projectRoot = projectRoot {
+                let projectURL = URL(fileURLWithPath: projectRoot)
+                analyzer = try ComplexityAnalyzer(projectRoot: projectURL)
+            } else {
+                analyzer = try ComplexityAnalyzer()
+            }
+
             let fileProcessor = FileProcessor(analyzer: analyzer)
 
             let processingOptions = ProcessingOptions(
@@ -136,6 +170,7 @@ public struct ComplexityCommand: AsyncParsableCommand {
             let outputOptions = OutputOptions(
                 showCyclomaticOnly: cyclomaticOnly,
                 showCognitiveOnly: cognitiveOnly,
+                showLCOM4: lcom4,
                 threshold: threshold
             )
 
@@ -175,9 +210,21 @@ public struct ComplexityCommand: AsyncParsableCommand {
                     || function.cognitiveComplexity >= threshold
             }
 
-            guard !filteredFunctions.isEmpty else { return nil }
+            // For LCOM4, filter classes with low cohesion (LCOM4 >= 3)
+            let filteredCohesions = result.classCohesions?.filter { cohesion in
+                cohesion.lcom4 >= 3
+            }
 
-            return ComplexityResult(filePath: result.filePath, functions: filteredFunctions)
+            // Keep result if either functions or cohesions pass threshold
+            guard !filteredFunctions.isEmpty || filteredCohesions?.isEmpty == false else {
+                return nil
+            }
+
+            return ComplexityResult(
+                filePath: result.filePath,
+                functions: filteredFunctions,
+                classCohesions: filteredCohesions
+            )
         }
     }
 

@@ -403,7 +403,7 @@ struct IntegrationTests {
         // Given
         let code = try loadFixture("integration_test_sample")
         let sourceFile = Parser.parse(source: code)
-        let analyzer = ComplexityAnalyzer()
+        let analyzer = try ComplexityAnalyzer()
 
         // When
         let result = try await analyzer.analyze(sourceFile: sourceFile, filePath: "test.swift")
