@@ -20,7 +20,7 @@ enum LCOMError: LocalizedError {
             return "Failed to parse class '\(className)': \(error.localizedDescription)"
         case .indexStoreNotFound(let projectRoot, let hint):
             return """
-                Index store not found at '\(projectRoot)/.build/index/store'.
+                Index store not found at '\(projectRoot)/.build/debug/index/store'.
                 \(hint)
                 """
         case .indexDBInitializationFailed(let error):
@@ -98,9 +98,11 @@ actor SemanticLCOMCalculator {
         self.projectRoot = projectRoot
 
         // IndexStore-DB初期化
+        // .build/debugはアーキテクチャ固有のディレクトリへのシンボリックリンク
         let indexStorePath =
             projectRoot
             .appendingPathComponent(".build")
+            .appendingPathComponent("debug")
             .appendingPathComponent("index")
             .appendingPathComponent("store")
 
@@ -111,10 +113,13 @@ actor SemanticLCOMCalculator {
             )
         }
 
+        // libIndexStore.dylibのパスを取得（Xcodeツールチェーン）
+        let libIndexStorePath = try Self.findLibIndexStore()
+
         self.indexStoreDB = try IndexStoreDB(
             storePath: indexStorePath.path,
             databasePath: NSTemporaryDirectory() + "lcom4-index.db",
-            library: nil
+            library: IndexStoreLibrary(dylibPath: libIndexStorePath)
         )
     }
 
@@ -424,6 +429,57 @@ actor SemanticLCOMCalculator {
         }
 
         return methodCalls
+    }
+
+    // MARK: - Helper Methods
+
+    /// libIndexStore.dylibのパスを検索
+    /// TODO: Linux対応 - Linuxでも動作するように修正が必要
+    private static func findLibIndexStore() throws -> String {
+        // xcrunでXcodeツールチェーンのパスを取得
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
+        process.arguments = ["--show-sdk-path"]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        guard
+            let sdkPath = String(data: data, encoding: .utf8)?.trimmingCharacters(
+                in: .whitespacesAndNewlines)
+        else {
+            throw LCOMError.indexDBInitializationFailed(
+                underlying: NSError(
+                    domain: "SemanticLCOMCalculator", code: 1,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "Failed to get SDK path from xcrun"
+                    ])
+            )
+        }
+
+        // SDKパスからツールチェーンのlibディレクトリを推測
+        // /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+        // -> /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/libIndexStore.dylib
+        let xcodeAppPath = sdkPath.components(separatedBy: "/Platforms/").first ?? ""
+        let libPath =
+            "\(xcodeAppPath)/Toolchains/XcodeDefault.xctoolchain/usr/lib/libIndexStore.dylib"
+
+        guard FileManager.default.fileExists(atPath: libPath) else {
+            throw LCOMError.indexDBInitializationFailed(
+                underlying: NSError(
+                    domain: "SemanticLCOMCalculator", code: 2,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "libIndexStore.dylib not found at: \(libPath)"
+                    ])
+            )
+        }
+
+        return libPath
     }
 }
 
