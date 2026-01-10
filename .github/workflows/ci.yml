@@ -68,10 +68,14 @@ jobs:
       - name: Build package (Linux)
         if: runner.os == 'Linux'
         run: |
-          SWIFT_PATH=$(dirname $(dirname $(which swift)))
+          # Swiftly installs toolchains to ~/.local/share/swiftly/toolchains/<version>/
+          # 'which swift' returns the wrapper, so we need to get the actual toolchain path
+          SWIFTLY_HOME="${HOME}/.local/share/swiftly"
+          TOOLCHAIN_USR=$(ls -d ${SWIFTLY_HOME}/toolchains/*/usr 2>/dev/null | head -1)
+          echo "Using toolchain: ${TOOLCHAIN_USR}"
           swift build --configuration release \
-            -Xcxx -I${SWIFT_PATH}/lib/swift \
-            -Xcxx -I${SWIFT_PATH}/lib/swift/Block
+            -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
+            -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
 
       - name: Run tests (macOS)
         if: runner.os == 'macOS'
@@ -80,10 +84,11 @@ jobs:
       - name: Run tests (Linux)
         if: runner.os == 'Linux'
         run: |
-          SWIFT_PATH=$(dirname $(dirname $(which swift)))
+          SWIFTLY_HOME="${HOME}/.local/share/swiftly"
+          TOOLCHAIN_USR=$(ls -d ${SWIFTLY_HOME}/toolchains/*/usr 2>/dev/null | head -1)
           swift test \
-            -Xcxx -I${SWIFT_PATH}/lib/swift \
-            -Xcxx -I${SWIFT_PATH}/lib/swift/Block
+            -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
+            -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
 
   lint:
     name: Code Quality
