@@ -26,7 +26,7 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0"),
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
-    // IndexStore-DB統合（LCOM4セマンティック解析用）
+    // IndexStore-DB integration (for LCOM4 semantic analysis)
     .package(url: "https://github.com/swiftlang/indexstore-db", branch: "main"),
   ],
   targets: [
@@ -35,7 +35,7 @@ let package = Package(
       dependencies: [
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftParser", package: "swift-syntax"),
-        // IndexStore-DB統合（LCOM4セマンティック解析用）
+        // IndexStore-DB integration (for LCOM4 semantic analysis)
         .product(name: "IndexStoreDB", package: "indexstore-db"),
       ],
       path: "Sources/SwiftComplexityCore",
