@@ -110,34 +110,56 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
         var propertyCount = 0
 
         for member in members {
-            // メソッド検出
-            if let functionDecl = member.decl.as(FunctionDeclSyntax.self) {
-                let isStatic = functionDecl.modifiers.contains { $0.name.text == "static" }
-                if !isStatic {
-                    methodCount += 1
-                }
-            } else if member.decl.is(InitializerDeclSyntax.self) {
-                methodCount += 1
-            } else if member.decl.is(DeinitializerDeclSyntax.self) {
-                methodCount += 1
-            }
-            // プロパティ検出
-            else if let variableDecl = member.decl.as(VariableDeclSyntax.self) {
-                let isStatic = variableDecl.modifiers.contains { $0.name.text == "static" }
-                if !isStatic {
-                    for binding in variableDecl.bindings {
-                        if binding.pattern.is(IdentifierPatternSyntax.self) {
-                            // computed propertyは除外
-                            if binding.accessorBlock == nil {
-                                propertyCount += 1
-                            }
-                        }
-                    }
-                }
-            }
+            let (propery, method) = member.countPropertyAndMethodCount()
+            propertyCount += propery
+            methodCount += method
         }
 
         return (methodCount, propertyCount)
     }
+}
 
+extension MemberBlockItemSyntax {
+    fileprivate func countPropertyAndMethodCount() -> (property: Int, method: Int) {
+        var propertyCount: Int = 0
+        var methodCount: Int = 0
+
+        // メソッド検出
+        if let functionDecl = decl.as(FunctionDeclSyntax.self) {
+            let isStatic = functionDecl.modifiers.contains { $0.name.text == "static" }
+            if !isStatic {
+                methodCount += 1
+            }
+        } else if decl.is(InitializerDeclSyntax.self) {
+            methodCount += 1
+        } else if decl.is(DeinitializerDeclSyntax.self) {
+            methodCount += 1
+        }
+        // プロパティ検出
+        else if let variableDecl = decl.as(VariableDeclSyntax.self) {
+            let (propery, method) = variableDecl.countPropertyAndMethodCount()
+            propertyCount += propery
+            methodCount += method
+        }
+        return (property: propertyCount, method: methodCount)
+    }
+}
+
+extension VariableDeclSyntax {
+    fileprivate func countPropertyAndMethodCount() -> (property: Int, method: Int) {
+        var propertyCount: Int = 0
+
+        let isStatic = modifiers.contains { $0.name.text == "static" }
+        if !isStatic {
+            for binding in bindings {
+                if binding.pattern.is(IdentifierPatternSyntax.self) {
+                    // computed propertyは除外
+                    if binding.accessorBlock == nil {
+                        propertyCount += 1
+                    }
+                }
+            }
+        }
+        return (property: propertyCount, method: 0)
+    }
 }

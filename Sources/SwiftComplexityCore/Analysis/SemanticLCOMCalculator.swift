@@ -362,33 +362,45 @@ actor SemanticLCOMCalculator {
         var properties: [String] = []
 
         for member in members {
-            // メソッド検出
-            if let functionDecl = member.decl.as(FunctionDeclSyntax.self) {
-                let isStatic = functionDecl.modifiers.contains { $0.name.text == "static" }
-                if !isStatic {
-                    methods.append((name: functionDecl.name.text, body: functionDecl.body))
-                }
-            } else if let initDecl = member.decl.as(InitializerDeclSyntax.self) {
-                methods.append((name: "init", body: initDecl.body))
-            } else if let deinitDecl = member.decl.as(DeinitializerDeclSyntax.self) {
-                methods.append((name: "deinit", body: deinitDecl.body))
+            if let method = extractMethod(from: member.decl) {
+                methods.append(method)
             }
-            // プロパティ検出
-            else if let variableDecl = member.decl.as(VariableDeclSyntax.self) {
-                let isStatic = variableDecl.modifiers.contains { $0.name.text == "static" }
-                if !isStatic {
-                    for binding in variableDecl.bindings {
-                        if let pattern = binding.pattern.as(IdentifierPatternSyntax.self) {
-                            if binding.accessorBlock == nil {
-                                properties.append(pattern.identifier.text)
-                            }
-                        }
-                    }
-                }
-            }
+            properties.append(contentsOf: extractStoredProperties(from: member.decl))
         }
 
         return (methods, properties)
+    }
+
+    /// static修飾子の有無をチェック
+    private func isStatic(_ modifiers: DeclModifierListSyntax) -> Bool {
+        modifiers.contains { $0.name.text == "static" }
+    }
+
+    /// DeclSyntaxからメソッド（関数、init、deinit）を抽出
+    private func extractMethod(from decl: DeclSyntax) -> (name: String, body: CodeBlockSyntax?)? {
+        if let functionDecl = decl.as(FunctionDeclSyntax.self) {
+            guard !isStatic(functionDecl.modifiers) else { return nil }
+            return (name: functionDecl.name.text, body: functionDecl.body)
+        } else if let initDecl = decl.as(InitializerDeclSyntax.self) {
+            return (name: "init", body: initDecl.body)
+        } else if let deinitDecl = decl.as(DeinitializerDeclSyntax.self) {
+            return (name: "deinit", body: deinitDecl.body)
+        }
+        return nil
+    }
+
+    /// DeclSyntaxからストアドプロパティを抽出
+    private func extractStoredProperties(from decl: DeclSyntax) -> [String] {
+        guard let variableDecl = decl.as(VariableDeclSyntax.self),
+            !isStatic(variableDecl.modifiers)
+        else { return [] }
+
+        return variableDecl.bindings.compactMap { binding in
+            guard let pattern = binding.pattern.as(IdentifierPatternSyntax.self),
+                binding.accessorBlock == nil
+            else { return nil }
+            return pattern.identifier.text
+        }
     }
 
     private func extractPropertyAccessFromSyntax(

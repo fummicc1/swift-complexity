@@ -109,49 +109,12 @@ public struct ComplexityCommand: AsyncParsableCommand {
     public init() {}
 
     public func run() async throws {
-        // Validate mutually exclusive flags
-        if cyclomaticOnly && cognitiveOnly {
-            print("Error: --cyclomatic-only and --cognitive-only are mutually exclusive.")
-            throw ExitCode.failure
-        }
+        try validateFlags()
+        validateLCOM4Options()
+        logVerboseConfiguration()
 
-        // Validate LCOM4 options
-        if lcom4 && projectRoot == nil {
-            print(
-                "Warning: --lcom4 requires --project-root for accurate semantic analysis. Using basic syntax analysis."
-            )
-        }
-
-        if verbose {
-            print("swift-complexity v\(Self.configuration.version)")
-            print("Analyzing paths: \(paths.joined(separator: ", "))")
-            print("Output format: \(format)")
-            print("Recursive: \(recursive)")
-            if lcom4 {
-                print("LCOM4 analysis: enabled")
-                if let projectRoot = projectRoot {
-                    print("Project root: \(projectRoot)")
-                }
-            }
-            if !exclude.isEmpty {
-                print("Exclude patterns: \(exclude.joined(separator: ", "))")
-            }
-            if let threshold = threshold {
-                print("Complexity threshold: \(threshold)")
-            }
-        }
-
-        // Execute analysis
         do {
-            // Create analyzer with optional project root for LCOM4
-            let analyzer: ComplexityAnalyzer
-            if lcom4, let projectRoot = projectRoot {
-                let projectURL = URL(fileURLWithPath: projectRoot)
-                analyzer = try ComplexityAnalyzer(projectRoot: projectURL)
-            } else {
-                analyzer = try ComplexityAnalyzer()
-            }
-
+            let analyzer = try createAnalyzer()
             let fileProcessor = FileProcessor(analyzer: analyzer)
 
             let processingOptions = ProcessingOptions(
@@ -163,10 +126,8 @@ public struct ComplexityCommand: AsyncParsableCommand {
             let results = try await fileProcessor.processFiles(
                 at: paths, options: processingOptions)
 
-            // Apply threshold filtering
             let filteredResults = filterByThreshold(results: results, threshold: threshold)
 
-            // Generate output
             let outputOptions = OutputOptions(
                 showCyclomaticOnly: cyclomaticOnly,
                 showCognitiveOnly: cognitiveOnly,
@@ -180,7 +141,6 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
             print(output)
 
-            // Exit with warning code if threshold exceeded and results found
             if let threshold = threshold,
                 hasExceededThreshold(results: results, threshold: threshold)
             {
@@ -195,6 +155,47 @@ public struct ComplexityCommand: AsyncParsableCommand {
         } catch {
             throw CLIError.unexpectedError(error.localizedDescription)
         }
+    }
+
+    /// 排他フラグのバリデーション
+    private func validateFlags() throws {
+        if cyclomaticOnly && cognitiveOnly {
+            print("Error: --cyclomatic-only and --cognitive-only are mutually exclusive.")
+            throw ExitCode.failure
+        }
+    }
+
+    /// LCOM4オプションのバリデーション
+    private func validateLCOM4Options() {
+        if lcom4 && projectRoot == nil {
+            print(
+                "Warning: --lcom4 requires --project-root for accurate semantic analysis. Using basic syntax analysis."
+            )
+        }
+    }
+
+    /// 詳細ログ出力
+    private func logVerboseConfiguration() {
+        guard verbose else { return }
+
+        print("swift-complexity v\(Self.configuration.version)")
+        print("Analyzing paths: \(paths.joined(separator: ", "))")
+        print("Output format: \(format)")
+        print("Recursive: \(recursive)")
+        if lcom4 {
+            print("LCOM4 analysis: enabled")
+            if let root = projectRoot { print("Project root: \(root)") }
+        }
+        if !exclude.isEmpty { print("Exclude patterns: \(exclude.joined(separator: ", "))") }
+        if let t = threshold { print("Complexity threshold: \(t)") }
+    }
+
+    /// ComplexityAnalyzerの生成
+    private func createAnalyzer() throws -> ComplexityAnalyzer {
+        guard lcom4, let projectRoot = projectRoot else {
+            return try ComplexityAnalyzer()
+        }
+        return try ComplexityAnalyzer(projectRoot: URL(fileURLWithPath: projectRoot))
     }
 
     // MARK: - Private Methods

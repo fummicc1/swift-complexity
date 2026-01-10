@@ -38,45 +38,54 @@ public class OutputFormatter {
     }
 
     private func formatAsText(results: [ComplexityResult], options: OutputOptions) -> String {
-        var output = ""
+        let sections = results.compactMap { result -> String? in
+            guard !result.functions.isEmpty || result.classCohesions != nil else { return nil }
 
-        for result in results {
-            if result.functions.isEmpty && result.classCohesions == nil {
-                continue
+            var parts: [String] = ["File: \(result.filePath)"]
+
+            if let complexitySection = formatComplexitySection(result: result, options: options) {
+                parts.append(complexitySection)
             }
 
-            output += "File: \(result.filePath)\n"
-
-            // Function complexity table (unless only LCOM4 is requested)
-            if !options.showLCOM4 && !result.functions.isEmpty {
-                output += formatTableHeader(options: options)
-                output += formatTableSeparator(options: options)
-
-                for function in result.functions {
-                    output += formatTableRow(function: function, options: options)
-                }
-
-                output += formatTableSeparator(options: options)
-                output += formatSummary(summary: result.summary, options: options)
+            if let cohesionSection = formatCohesionSection(result: result, options: options) {
+                parts.append(cohesionSection)
             }
 
-            // LCOM4 cohesion table
-            if options.showLCOM4 || !result.functions.isEmpty {
-                if let classCohesions = result.classCohesions {
-                    if !options.showLCOM4 && !result.functions.isEmpty {
-                        output += "\n"
-                    }
-                    output += formatCohesionTable(classCohesions: classCohesions)
-                    if let cohesionSummary = result.cohesionSummary {
-                        output += formatCohesionSummary(summary: cohesionSummary)
-                    }
-                }
-            }
-
-            output += "\n"
+            return parts.joined(separator: "\n")
         }
 
-        return output.trimmingCharacters(in: .whitespacesAndNewlines)
+        return sections.joined(separator: "\n\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// 複雑度テーブルセクションをフォーマット
+    private func formatComplexitySection(
+        result: ComplexityResult,
+        options: OutputOptions
+    ) -> String? {
+        guard !options.showLCOM4, !result.functions.isEmpty else { return nil }
+
+        var output = formatTableHeader(options: options)
+        output += formatTableSeparator(options: options)
+        for function in result.functions {
+            output += formatTableRow(function: function, options: options)
+        }
+        output += formatTableSeparator(options: options)
+        output += formatSummary(summary: result.summary, options: options)
+        return output
+    }
+
+    /// 凝集度テーブルセクションをフォーマット
+    private func formatCohesionSection(
+        result: ComplexityResult,
+        options: OutputOptions
+    ) -> String? {
+        guard let classCohesions = result.classCohesions else { return nil }
+
+        var output = formatCohesionTable(classCohesions: classCohesions)
+        if let summary = result.cohesionSummary {
+            output += formatCohesionSummary(summary: summary)
+        }
+        return output
     }
 
     private func formatTableHeader(options: OutputOptions) -> String {
@@ -272,44 +281,56 @@ public class OutputFormatter {
     private func formatAsXcodeDiagnostics(results: [ComplexityResult], options: OutputOptions)
         -> String
     {
-        var output = ""
         let threshold = options.threshold ?? 10
 
-        for result in results {
-            // Function complexity diagnostics
-            for function in result.functions {
-                let cyclomatic = function.cyclomaticComplexity
-                let cognitive = function.cognitiveComplexity
-
-                // Check if either complexity exceeds threshold
-                if cyclomatic > threshold || cognitive > threshold {
-                    let severity =
-                        (cyclomatic > threshold * 2 || cognitive > threshold * 2)
-                        ? "error" : "warning"
-                    let message =
-                        "Function '\(function.name)' has high complexity (Cyclomatic: \(cyclomatic), Cognitive: \(cognitive), Threshold: \(threshold))"
-
-                    // Format: <file>:<line>:<column>: <severity>: <message>
-                    output +=
-                        "\(result.filePath):\(function.location.line):\(function.location.column): \(severity): \(message)\n"
-                }
-            }
-
-            // Class cohesion diagnostics
-            if let classCohesions = result.classCohesions {
-                for cohesion in classCohesions {
-                    if cohesion.cohesionLevel == .low {
-                        let severity = cohesion.lcom4 >= 5 ? "error" : "warning"
-                        let message =
-                            "\(cohesion.type.rawValue.capitalized) '\(cohesion.name)' has low cohesion (LCOM4: \(cohesion.lcom4), Level: \(cohesion.cohesionLevel.rawValue))"
-
-                        output +=
-                            "\(result.filePath):\(cohesion.location.line):\(cohesion.location.column): \(severity): \(message)\n"
-                    }
-                }
+        let complexityDiagnostics = results.flatMap { result in
+            result.functions.compactMap { function in
+                createComplexityDiagnostic(for: function, in: result.filePath, threshold: threshold)
             }
         }
 
-        return output
+        let cohesionDiagnostics = results.flatMap { result in
+            (result.classCohesions ?? []).compactMap { cohesion in
+                createCohesionDiagnostic(for: cohesion, in: result.filePath)
+            }
+        }
+
+        let allDiagnostics = complexityDiagnostics + cohesionDiagnostics
+        return allDiagnostics.isEmpty ? "" : allDiagnostics.joined(separator: "\n") + "\n"
+    }
+
+    /// 複雑度診断メッセージを作成
+    private func createComplexityDiagnostic(
+        for function: FunctionComplexity,
+        in filePath: String,
+        threshold: Int
+    ) -> String? {
+        let cyclomatic = function.cyclomaticComplexity
+        let cognitive = function.cognitiveComplexity
+
+        guard cyclomatic > threshold || cognitive > threshold else { return nil }
+
+        let severity =
+            (cyclomatic > threshold * 2 || cognitive > threshold * 2) ? "error" : "warning"
+        let message =
+            "Function '\(function.name)' has high complexity (Cyclomatic: \(cyclomatic), Cognitive: \(cognitive), Threshold: \(threshold))"
+
+        return
+            "\(filePath):\(function.location.line):\(function.location.column): \(severity): \(message)"
+    }
+
+    /// 凝集度診断メッセージを作成
+    private func createCohesionDiagnostic(
+        for cohesion: ClassCohesion,
+        in filePath: String
+    ) -> String? {
+        guard cohesion.cohesionLevel == .low else { return nil }
+
+        let severity = cohesion.lcom4 >= 5 ? "error" : "warning"
+        let message =
+            "\(cohesion.type.rawValue.capitalized) '\(cohesion.name)' has low cohesion (LCOM4: \(cohesion.lcom4), Level: \(cohesion.cohesionLevel.rawValue))"
+
+        return
+            "\(filePath):\(cohesion.location.line):\(cohesion.location.column): \(severity): \(message)"
     }
 }
