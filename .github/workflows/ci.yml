@@ -61,11 +61,29 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-swift-${{ matrix.swift-version }}-
 
-      - name: Build package
+      - name: Build package (macOS)
+        if: runner.os == 'macOS'
         run: swift build --configuration release
 
-      - name: Run tests
+      - name: Build package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          SWIFT_PATH=$(dirname $(dirname $(which swift)))
+          swift build --configuration release \
+            -Xcxx -I${SWIFT_PATH}/lib/swift \
+            -Xcxx -I${SWIFT_PATH}/lib/swift/Block
+
+      - name: Run tests (macOS)
+        if: runner.os == 'macOS'
         run: swift test
+
+      - name: Run tests (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          SWIFT_PATH=$(dirname $(dirname $(which swift)))
+          swift test \
+            -Xcxx -I${SWIFT_PATH}/lib/swift \
+            -Xcxx -I${SWIFT_PATH}/lib/swift/Block
 
   lint:
     name: Code Quality
