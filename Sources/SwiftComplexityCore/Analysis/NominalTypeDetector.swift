@@ -2,7 +2,7 @@ import Foundation
 import IndexStoreDB
 import SwiftSyntax
 
-/// Nominal Type（class/struct/actor）の種類
+/// Nominal Type kind (class/struct/actor)
 enum NominalTypeKind {
     case `class`
     case `struct`
@@ -12,12 +12,12 @@ enum NominalTypeKind {
         switch self {
         case .class: return .class
         case .struct: return .struct
-        case .actor: return .class  // actorもIndexSymbolKind.classとして扱われる
+        case .actor: return .class  // actor is also handled as IndexSymbolKind.class
         }
     }
 }
 
-/// 検出されたNominal Typeの情報
+/// Information about detected Nominal Type
 struct DetectedNominal {
     let name: String
     let type: NominalTypeKind
@@ -37,7 +37,7 @@ struct DetectedNominal {
     }
 }
 
-/// Nominal Type（class/struct/actor）の検出と情報収集
+/// Detection and information collection for Nominal Type (class/struct/actor)
 class NominalTypeDetector: SyntaxVisitor {
     private var detectedTypes: [DetectedNominal] = []
     private var converter: SourceLocationConverter?
@@ -46,7 +46,7 @@ class NominalTypeDetector: SyntaxVisitor {
         super.init(viewMode: viewMode)
     }
 
-    /// ソースファイルからNominal Typeを検出
+    /// Detect Nominal Types from source file
     func detectTypes(in sourceFile: SourceFileSyntax) -> [DetectedNominal] {
         detectedTypes.removeAll()
         converter = SourceLocationConverter(fileName: "", tree: sourceFile)

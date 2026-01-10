@@ -157,7 +157,7 @@ public struct ComplexityCommand: AsyncParsableCommand {
         }
     }
 
-    /// 排他フラグのバリデーション
+    /// Validates mutually exclusive flags
     private func validateFlags() throws {
         if cyclomaticOnly && cognitiveOnly {
             print("Error: --cyclomatic-only and --cognitive-only are mutually exclusive.")
@@ -165,7 +165,7 @@ public struct ComplexityCommand: AsyncParsableCommand {
         }
     }
 
-    /// LCOM4オプションのバリデーション
+    /// Validates LCOM4 options
     private func validateLCOM4Options() {
         if lcom4 && projectRoot == nil {
             print(
@@ -174,7 +174,7 @@ public struct ComplexityCommand: AsyncParsableCommand {
         }
     }
 
-    /// 詳細ログ出力
+    /// Logs verbose configuration
     private func logVerboseConfiguration() {
         guard verbose else { return }
 
@@ -190,7 +190,7 @@ public struct ComplexityCommand: AsyncParsableCommand {
         if let t = threshold { print("Complexity threshold: \(t)") }
     }
 
-    /// ComplexityAnalyzerの生成
+    /// Creates a ComplexityAnalyzer instance
     private func createAnalyzer() throws -> ComplexityAnalyzer {
         guard lcom4, let projectRoot = projectRoot else {
             return try ComplexityAnalyzer()

@@ -1,40 +1,40 @@
 import Foundation
 
-/// Nominal Type種類（class/struct/actor）
+/// Nominal Type kind (class/struct/actor)
 public enum NominalType: String, Codable, Sendable {
     case `class`
     case `struct`
     case actor
 }
 
-/// 凝集度レベルの分類
+/// Classification of cohesion levels
 public enum CohesionLevel: String, Codable, Sendable {
-    case high  // LCOM4 = 0 or 1（理想）
-    case moderate  // LCOM4 = 2（許容）
-    case low  // LCOM4 >= 3（要リファクタリング）
+    case high  // LCOM4 = 0 or 1 (ideal)
+    case moderate  // LCOM4 = 2 (acceptable)
+    case low  // LCOM4 >= 3 (needs refactoring)
 }
 
-/// クラス/構造体/actorの凝集度情報
+/// Cohesion information for class/struct/actor
 public struct ClassCohesion: Codable, Hashable, Sendable {
-    /// クラス/構造体/actor名
+    /// Class/struct/actor name
     public let name: String
 
-    /// Nominal Type種類
+    /// Nominal Type kind
     public let type: NominalType
 
-    /// LCOM4値（連結成分の数）
+    /// LCOM4 value (number of connected components)
     public let lcom4: Int
 
-    /// メソッド数
+    /// Method count
     public let methodCount: Int
 
-    /// プロパティ数
+    /// Property count
     public let propertyCount: Int
 
-    /// ソースコード位置
+    /// Source code location
     public let location: SourceLocation
 
-    /// 凝集度レベル（計算プロパティ）
+    /// Cohesion level (computed property)
     public var cohesionLevel: CohesionLevel {
         switch lcom4 {
         case 0, 1:
@@ -69,18 +69,18 @@ extension ClassCohesion: CustomStringConvertible {
     }
 }
 
-/// ファイル全体の凝集度サマリー
+/// Cohesion summary for the entire file
 public struct CohesionSummary: Codable, Sendable {
-    /// 分析されたクラス/構造体/actorの総数
+    /// Total number of analyzed classes/structs/actors
     public let totalClasses: Int
 
-    /// 平均LCOM4値
+    /// Average LCOM4 value
     public let averageLCOM4: Double
 
-    /// 最大LCOM4値
+    /// Maximum LCOM4 value
     public let maxLCOM4: Int
 
-    /// 凝集度が低いクラスの数（LCOM4 >= 3）
+    /// Number of classes with low cohesion (LCOM4 >= 3)
     public let classesWithLowCohesion: Int
 
     public init(classes: [ClassCohesion]) {

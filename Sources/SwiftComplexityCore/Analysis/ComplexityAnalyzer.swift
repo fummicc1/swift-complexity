@@ -21,8 +21,8 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
         self.functionDetector = FunctionDetector(viewMode: .sourceAccurate)
         self.nominalTypeDetector = NominalTypeDetector(viewMode: .sourceAccurate)
 
-        // LCOM4: IndexStore-DB統合による高精度（90-95%）セマンティック解析
-        // IndexStoreが見つからない場合は構文解析ベースのフォールバック
+        // LCOM4: High-accuracy (90-95%) semantic analysis with IndexStore-DB integration
+        // Falls back to syntax-based analysis if IndexStore is not found
         if let projectRoot = projectRoot {
             self.lcomCalculator = try SemanticLCOMCalculator(projectRoot: projectRoot)
             self.enableLCOM4 = true
@@ -35,7 +35,7 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
     public func analyze(sourceFile: SourceFileSyntax, filePath: String) async throws
         -> ComplexityResult
     {
-        // 既存の関数複雑度計算
+        // Existing function complexity calculation
         let functions = functionDetector.detectFunctions(in: sourceFile)
         var functionComplexities: [FunctionComplexity] = []
 
@@ -54,7 +54,7 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
             functionComplexities.append(functionComplexity)
         }
 
-        // LCOM4計算（有効な場合のみ）
+        // LCOM4 calculation (only if enabled)
         var classCohesions: [ClassCohesion]? = nil
 
         if enableLCOM4, let lcomCalculator = lcomCalculator {
@@ -64,10 +64,10 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
             for detectedType in nominalTypes {
                 let lcom4Value = try await lcomCalculator.calculate(for: detectedType)
 
-                // メンバー数を計算
+                // Calculate member counts
                 let (methods, properties) = extractMemberCounts(from: detectedType.members)
 
-                // NominalTypeKindをNominalTypeに変換
+                // Convert NominalTypeKind to NominalType
                 let nominalType: NominalType
                 switch detectedType.type {
                 case .class:
@@ -102,7 +102,7 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
 
     // MARK: - Private Helpers
 
-    /// メンバー数をカウント（メソッドとプロパティ）
+    /// Count members (methods and properties)
     private func extractMemberCounts(from members: MemberBlockItemListSyntax) -> (
         methods: Int, properties: Int
     ) {
@@ -124,7 +124,7 @@ extension MemberBlockItemSyntax {
         var propertyCount: Int = 0
         var methodCount: Int = 0
 
-        // メソッド検出
+        // Method detection
         if let functionDecl = decl.as(FunctionDeclSyntax.self) {
             let isStatic = functionDecl.modifiers.contains { $0.name.text == "static" }
             if !isStatic {
@@ -135,7 +135,7 @@ extension MemberBlockItemSyntax {
         } else if decl.is(DeinitializerDeclSyntax.self) {
             methodCount += 1
         }
-        // プロパティ検出
+        // Property detection
         else if let variableDecl = decl.as(VariableDeclSyntax.self) {
             let (propery, method) = variableDecl.countPropertyAndMethodCount()
             propertyCount += propery
@@ -153,7 +153,7 @@ extension VariableDeclSyntax {
         if !isStatic {
             for binding in bindings {
                 if binding.pattern.is(IdentifierPatternSyntax.self) {
-                    // computed propertyは除外
+                    // Exclude computed properties
                     if binding.accessorBlock == nil {
                         propertyCount += 1
                     }

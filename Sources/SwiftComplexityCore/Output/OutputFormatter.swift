@@ -57,7 +57,7 @@ public class OutputFormatter {
         return sections.joined(separator: "\n\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// 複雑度テーブルセクションをフォーマット
+    /// Formats the complexity table section
     private func formatComplexitySection(
         result: ComplexityResult,
         options: OutputOptions
@@ -74,7 +74,7 @@ public class OutputFormatter {
         return output
     }
 
-    /// 凝集度テーブルセクションをフォーマット
+    /// Formats the cohesion table section
     private func formatCohesionSection(
         result: ComplexityResult,
         options: OutputOptions
@@ -299,7 +299,7 @@ public class OutputFormatter {
         return allDiagnostics.isEmpty ? "" : allDiagnostics.joined(separator: "\n") + "\n"
     }
 
-    /// 複雑度診断メッセージを作成
+    /// Creates a complexity diagnostic message
     private func createComplexityDiagnostic(
         for function: FunctionComplexity,
         in filePath: String,
@@ -319,7 +319,7 @@ public class OutputFormatter {
             "\(filePath):\(function.location.line):\(function.location.column): \(severity): \(message)"
     }
 
-    /// 凝集度診断メッセージを作成
+    /// Creates a cohesion diagnostic message
     private func createCohesionDiagnostic(
         for cohesion: ClassCohesion,
         in filePath: String

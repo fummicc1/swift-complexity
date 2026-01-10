@@ -36,7 +36,7 @@ enum LCOMError: LocalizedError {
 
 // MARK: - Union-Find Data Structure
 
-/// 効率的な連結成分カウントのためのUnion-Find
+/// Union-Find for efficient connected component counting
 class UnionFind {
     private var parent: [String: String] = [:]
     private var rank: [String: Int] = [:]
@@ -48,16 +48,16 @@ class UnionFind {
         }
     }
 
-    /// 要素のルートを検索（経路圧縮あり）
+    /// Finds the root of an element (with path compression)
     func find(_ element: String) -> String {
         guard let p = parent[element] else { return element }
         if p != element {
-            parent[element] = find(p)  // 経路圧縮
+            parent[element] = find(p)  // Path compression
         }
         return parent[element]!
     }
 
-    /// 2つの要素を同じ集合に統合
+    /// Merges two elements into the same set
     func union(_ a: String, _ b: String) {
         let rootA = find(a)
         let rootB = find(b)
@@ -77,7 +77,7 @@ class UnionFind {
         }
     }
 
-    /// 連結成分の数を計算
+    /// Calculates the number of connected components
     func componentCount() -> Int {
         var roots = Set<String>()
         for element in parent.keys {
@@ -89,7 +89,7 @@ class UnionFind {
 
 // MARK: - Semantic LCOM Calculator
 
-/// IndexStore-DB統合によるLCOM4計算エンジン（高精度：90-95%）
+/// LCOM4 calculation engine with IndexStore-DB integration (high accuracy: 90-95%)
 actor SemanticLCOMCalculator {
     private let indexStoreDB: IndexStoreDB
     private let projectRoot: URL
@@ -97,8 +97,8 @@ actor SemanticLCOMCalculator {
     init(projectRoot: URL) throws {
         self.projectRoot = projectRoot
 
-        // IndexStore-DB初期化
-        // .build/debugはアーキテクチャ固有のディレクトリへのシンボリックリンク
+        // IndexStore-DB initialization
+        // .build/debug is a symbolic link to architecture-specific directory
         let indexStorePath =
             projectRoot
             .appendingPathComponent(".build")
@@ -113,7 +113,7 @@ actor SemanticLCOMCalculator {
             )
         }
 
-        // libIndexStore.dylibのパスを取得（Xcodeツールチェーン）
+        // Get libIndexStore.dylib path (Xcode toolchain)
         let libIndexStorePath = try Self.findLibIndexStore()
 
         self.indexStoreDB = try IndexStoreDB(
@@ -123,20 +123,20 @@ actor SemanticLCOMCalculator {
         )
     }
 
-    /// Nominal Type（class/struct/actor）のLCOM4値を計算
+    /// Calculates LCOM4 value for Nominal Type (class/struct/actor)
     func calculate(for detectedType: DetectedNominal) async throws -> Int {
-        // 1. DetectedNominalからUSRを取得
+        // 1. Get USR from DetectedNominal
         guard
             let classUSR = try await findUSR(
                 for: detectedType.name,
                 kind: detectedType.type.symbolKind
             )
         else {
-            // シンボルが見つからない場合は基本的な構文解析にフォールバック
+            // Fall back to basic syntax analysis if symbol not found
             return calculateFromSyntax(for: detectedType)
         }
 
-        // 2. メンバー（メソッド・プロパティ）を取得
+        // 2. Get members (methods and properties)
         let members = try await queryMembers(of: classUSR)
 
         let methods = members.filter {
@@ -144,12 +144,12 @@ actor SemanticLCOMCalculator {
         }
         let properties = members.filter { $0.symbol.kind == .instanceProperty }
 
-        // 早期リターン
+        // Early returns
         if methods.isEmpty { return 0 }
         if methods.count == 1 { return properties.isEmpty ? 0 : 1 }
         if properties.isEmpty { return 0 }
 
-        // 3. 各メソッドがアクセスするプロパティを検出
+        // 3. Detect properties accessed by each method
         var methodToProperties: [String: Set<String>] = [:]
 
         for method in methods {
@@ -160,7 +160,7 @@ actor SemanticLCOMCalculator {
             methodToProperties[method.symbol.name] = accessedProperties
         }
 
-        // 4. メソッド呼び出し関係を検出
+        // 4. Detect method call relationships
         var methodCalls: [(String, String)] = []
 
         for method in methods {
@@ -173,7 +173,7 @@ actor SemanticLCOMCalculator {
             }
         }
 
-        // 5. Union-Findで連結成分を計算
+        // 5. Calculate connected components using Union-Find
         return calculateConnectedComponents(
             methods: methods.map(\.symbol.name),
             methodToProperties: methodToProperties,
@@ -183,7 +183,7 @@ actor SemanticLCOMCalculator {
 
     // MARK: - IndexStore-DB Integration
 
-    /// クラス/構造体/actorのUSRを検索
+    /// Searches for USR of class/struct/actor
     private func findUSR(for name: String, kind: IndexSymbolKind) async throws -> String? {
         return try await withCheckedThrowingContinuation { continuation in
             var foundUSR: String? = nil
@@ -197,16 +197,16 @@ actor SemanticLCOMCalculator {
             ) { occurrence in
                 if occurrence.symbol.name == name && occurrence.symbol.kind == kind {
                     foundUSR = occurrence.symbol.usr
-                    return false  // 検索終了
+                    return false  // Stop search
                 }
-                return true  // 検索続行
+                return true  // Continue search
             }
 
             continuation.resume(returning: foundUSR)
         }
     }
 
-    /// クラス/構造体/actorのメンバーを取得
+    /// Gets members of class/struct/actor
     private func queryMembers(of classUSR: String) async throws -> [SymbolOccurrence] {
         var members: [SymbolOccurrence] = []
 
@@ -217,7 +217,7 @@ actor SemanticLCOMCalculator {
                 roles: .childOf
             ) { occurrence in
                 members.append(occurrence)
-                return true  // 検索続行
+                return true  // Continue search
             }
             continuation.resume()
         }
@@ -225,7 +225,7 @@ actor SemanticLCOMCalculator {
         return members
     }
 
-    /// メソッドがアクセスするプロパティを検出
+    /// Detects properties accessed by a method
     private func findAccessedProperties(
         methodUSR: String,
         properties: [SymbolOccurrence]
@@ -233,7 +233,7 @@ actor SemanticLCOMCalculator {
         var accessedProperties: Set<String> = []
 
         for property in properties {
-            // プロパティへの参照を検索
+            // Search for references to property
             let hasReference = try await withCheckedThrowingContinuation {
                 (continuation: CheckedContinuation<Bool, Error>) in
                 var found = false
@@ -242,14 +242,14 @@ actor SemanticLCOMCalculator {
                     byUSR: property.symbol.usr,
                     roles: .reference
                 ) { occurrence in
-                    // メソッド内の参照かチェック
+                    // Check if reference is within the method
                     if occurrence.relations.contains(where: {
                         $0.symbol.usr == methodUSR && $0.roles.contains(.containedBy)
                     }) {
                         found = true
-                        return false  // 検索終了
+                        return false  // Stop search
                     }
-                    return true  // 検索続行
+                    return true  // Continue search
                 }
 
                 continuation.resume(returning: found)
@@ -263,7 +263,7 @@ actor SemanticLCOMCalculator {
         return accessedProperties
     }
 
-    /// メソッドが呼び出す他のメソッドを検出
+    /// Detects other methods called by a method
     private func findCalledMethods(
         methodUSR: String,
         allMethods: [SymbolOccurrence]
@@ -273,7 +273,7 @@ actor SemanticLCOMCalculator {
         for targetMethod in allMethods {
             if targetMethod.symbol.usr == methodUSR { continue }
 
-            // メソッド呼び出しを検索
+            // Search for method calls
             let isCalled = try await withCheckedThrowingContinuation {
                 (continuation: CheckedContinuation<Bool, Error>) in
                 var found = false
@@ -282,14 +282,14 @@ actor SemanticLCOMCalculator {
                     byUSR: targetMethod.symbol.usr,
                     roles: .call
                 ) { occurrence in
-                    // 呼び出し元が対象メソッドかチェック
+                    // Check if caller is the target method
                     if occurrence.relations.contains(where: {
                         $0.symbol.usr == methodUSR && $0.roles.contains(.containedBy)
                     }) {
                         found = true
-                        return false  // 検索終了
+                        return false  // Stop search
                     }
-                    return true  // 検索続行
+                    return true  // Continue search
                 }
 
                 continuation.resume(returning: found)
@@ -305,7 +305,7 @@ actor SemanticLCOMCalculator {
 
     // MARK: - Connected Components Calculation
 
-    /// Union-Findで連結成分を計算
+    /// Calculates connected components using Union-Find
     private func calculateConnectedComponents(
         methods: [String],
         methodToProperties: [String: Set<String>],
@@ -313,7 +313,7 @@ actor SemanticLCOMCalculator {
     ) -> Int {
         let uf = UnionFind(elements: methods)
 
-        // エッジ1: 共通プロパティアクセス
+        // Edge 1: Shared property access
         for (methodA, propertiesA) in methodToProperties {
             for (methodB, propertiesB) in methodToProperties {
                 if methodA == methodB { continue }
@@ -323,7 +323,7 @@ actor SemanticLCOMCalculator {
             }
         }
 
-        // エッジ2: メソッド呼び出し関係
+        // Edge 2: Method call relationships
         for (caller, callee) in methodCalls {
             uf.union(caller, callee)
         }
@@ -333,7 +333,7 @@ actor SemanticLCOMCalculator {
 
     // MARK: - Syntax Fallback
 
-    /// IndexStore-DBでシンボルが見つからない場合の基本的な構文解析
+    /// Basic syntax analysis when symbol not found in IndexStore-DB
     private func calculateFromSyntax(for detectedType: DetectedNominal) -> Int {
         let (methods, properties) = extractMembersFromSyntax(detectedType.members)
 
@@ -371,12 +371,12 @@ actor SemanticLCOMCalculator {
         return (methods, properties)
     }
 
-    /// static修飾子の有無をチェック
+    /// Checks for static modifier
     private func isStatic(_ modifiers: DeclModifierListSyntax) -> Bool {
         modifiers.contains { $0.name.text == "static" }
     }
 
-    /// DeclSyntaxからメソッド（関数、init、deinit）を抽出
+    /// Extracts method (function, init, deinit) from DeclSyntax
     private func extractMethod(from decl: DeclSyntax) -> (name: String, body: CodeBlockSyntax?)? {
         if let functionDecl = decl.as(FunctionDeclSyntax.self) {
             guard !isStatic(functionDecl.modifiers) else { return nil }
@@ -389,7 +389,7 @@ actor SemanticLCOMCalculator {
         return nil
     }
 
-    /// DeclSyntaxからストアドプロパティを抽出
+    /// Extracts stored properties from DeclSyntax
     private func extractStoredProperties(from decl: DeclSyntax) -> [String] {
         guard let variableDecl = decl.as(VariableDeclSyntax.self),
             !isStatic(variableDecl.modifiers)
@@ -445,10 +445,10 @@ actor SemanticLCOMCalculator {
 
     // MARK: - Helper Methods
 
-    /// libIndexStore.dylibのパスを検索
-    /// TODO: Linux対応 - Linuxでも動作するように修正が必要
+    /// Searches for libIndexStore.dylib path
+    /// TODO: Linux support - needs modification to work on Linux
     private static func findLibIndexStore() throws -> String {
-        // xcrunでXcodeツールチェーンのパスを取得
+        // Get Xcode toolchain path using xcrun
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
         process.arguments = ["--show-sdk-path"]
@@ -474,7 +474,7 @@ actor SemanticLCOMCalculator {
             )
         }
 
-        // SDKパスからツールチェーンのlibディレクトリを推測
+        // Infer toolchain lib directory from SDK path
         // /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
         // -> /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/libIndexStore.dylib
         let xcodeAppPath = sdkPath.components(separatedBy: "/Platforms/").first ?? ""
@@ -497,7 +497,7 @@ actor SemanticLCOMCalculator {
 
 // MARK: - Syntax Visitors (Fallback)
 
-/// プロパティアクセスを検出するVisitor
+/// Visitor for detecting property access
 private class PropertyAccessVisitor: SyntaxVisitor {
     let properties: [String]
     var accessedProperties: Set<String> = []
@@ -528,7 +528,7 @@ private class PropertyAccessVisitor: SyntaxVisitor {
     }
 }
 
-/// メソッド呼び出しを検出するVisitor
+/// Visitor for detecting method calls
 private class MethodCallVisitor: SyntaxVisitor {
     let methodNames: Set<String>
     var calledMethods: Set<String> = []
