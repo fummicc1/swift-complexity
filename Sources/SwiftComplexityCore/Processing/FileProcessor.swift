@@ -55,9 +55,9 @@ public actor FileProcessor: FileProcessing {
         self.fileManager = FileManager.default
     }
 
-    /// Initialize with project root for LCOM4 support
-    public init(projectRoot: URL) throws {
-        self.analyzer = try ComplexityAnalyzer(projectRoot: projectRoot)
+    /// Initialize with IndexStore path for LCOM4 support
+    public init(indexStorePath: URL) throws {
+        self.analyzer = try ComplexityAnalyzer(indexStorePath: indexStorePath)
         self.fileManager = FileManager.default
     }
 

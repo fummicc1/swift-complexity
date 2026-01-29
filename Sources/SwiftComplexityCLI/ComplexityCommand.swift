@@ -80,10 +80,10 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
     @Option(
         name: .long,
-        help: "Project root directory for LCOM4 analysis (required for accurate semantic analysis)",
+        help: "IndexStore path for LCOM4 analysis (e.g., .build/debug/index/store)",
         completion: .directory
     )
-    public var projectRoot: String?
+    public var indexStorePath: String?
 
     @Flag(
         name: .shortAndLong,
@@ -167,9 +167,9 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
     /// Validates LCOM4 options
     private func validateLCOM4Options() {
-        if lcom4 && projectRoot == nil {
+        if lcom4 && indexStorePath == nil {
             print(
-                "Warning: --lcom4 requires --project-root for accurate semantic analysis. Using basic syntax analysis."
+                "Warning: --lcom4 requires --index-store-path for accurate semantic analysis. Using basic syntax analysis."
             )
         }
     }
@@ -184,7 +184,7 @@ public struct ComplexityCommand: AsyncParsableCommand {
         print("Recursive: \(recursive)")
         if lcom4 {
             print("LCOM4 analysis: enabled")
-            if let root = projectRoot { print("Project root: \(root)") }
+            if let path = indexStorePath { print("IndexStore path: \(path)") }
         }
         if !exclude.isEmpty { print("Exclude patterns: \(exclude.joined(separator: ", "))") }
         if let t = threshold { print("Complexity threshold: \(t)") }
@@ -192,10 +192,10 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
     /// Creates a ComplexityAnalyzer instance
     private func createAnalyzer() throws -> ComplexityAnalyzer {
-        guard lcom4, let projectRoot = projectRoot else {
+        guard lcom4, let indexStorePath = indexStorePath else {
             return try ComplexityAnalyzer()
         }
-        return try ComplexityAnalyzer(projectRoot: URL(fileURLWithPath: projectRoot))
+        return try ComplexityAnalyzer(indexStorePath: URL(fileURLWithPath: indexStorePath))
     }
 
     // MARK: - Private Methods

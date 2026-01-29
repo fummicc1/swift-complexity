@@ -7,7 +7,7 @@ import SwiftSyntax
 enum LCOMError: LocalizedError {
     case noMembersFound(className: String)
     case parsingFailed(className: String, underlying: Error)
-    case indexStoreNotFound(projectRoot: String, hint: String)
+    case indexStoreNotFound(indexStorePath: String)
     case indexDBInitializationFailed(underlying: Error)
     case symbolNotFound(symbolName: String, usr: String?)
     case queryTimeout(query: String)
@@ -18,10 +18,10 @@ enum LCOMError: LocalizedError {
             return "No members found in class '\(className)'"
         case .parsingFailed(let className, let error):
             return "Failed to parse class '\(className)': \(error.localizedDescription)"
-        case .indexStoreNotFound(let projectRoot, let hint):
+        case .indexStoreNotFound(let indexStorePath):
             return """
-                Index store not found at '\(projectRoot)/.build/debug/index/store'.
-                \(hint)
+                Index store not found at '\(indexStorePath)'.
+                Run 'swift build' first to generate the index.
                 """
         case .indexDBInitializationFailed(let error):
             return "Failed to initialize IndexStoreDB: \(error.localizedDescription)"
@@ -92,25 +92,15 @@ class UnionFind {
 /// LCOM4 calculation engine with IndexStore-DB integration (high accuracy: 90-95%)
 actor SemanticLCOMCalculator {
     private let indexStoreDB: IndexStoreDB
-    private let projectRoot: URL
+    private let indexStorePath: URL
 
-    init(projectRoot: URL) throws {
-        self.projectRoot = projectRoot
-
-        // IndexStore-DB initialization
-        // .build/debug is a symbolic link to architecture-specific directory
-        let indexStorePath =
-            projectRoot
-            .appendingPathComponent(".build")
-            .appendingPathComponent("debug")
-            .appendingPathComponent("index")
-            .appendingPathComponent("store")
+    /// Initialize with explicit IndexStore path
+    /// - Parameter indexStorePath: Direct path to the IndexStore (e.g., .build/debug/index/store)
+    init(indexStorePath: URL) throws {
+        self.indexStorePath = indexStorePath
 
         guard FileManager.default.fileExists(atPath: indexStorePath.path) else {
-            throw LCOMError.indexStoreNotFound(
-                projectRoot: projectRoot.path,
-                hint: "Run 'swift build' first to generate the index"
-            )
+            throw LCOMError.indexStoreNotFound(indexStorePath: indexStorePath.path)
         }
 
         // Get libIndexStore.dylib path (Xcode toolchain)

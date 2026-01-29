@@ -50,7 +50,7 @@ swift run SwiftComplexityCLI Sources --format xcode --threshold 15
 
 # LCOM4 class cohesion analysis (requires swift build first)
 swift build  # Generate index
-swift run SwiftComplexityCLI Sources --lcom4 --project-root .
+swift run SwiftComplexityCLI Sources --lcom4 --index-store-path .build/debug/index/store
 ```
 
 ## CLI Integration
@@ -121,7 +121,7 @@ swift run SwiftComplexityCLI Sources --cognitive-only --threshold 5
 
 # Analyze class cohesion with LCOM4
 swift build  # Generate index first
-swift run SwiftComplexityCLI Sources --lcom4 --project-root . --format json
+swift run SwiftComplexityCLI Sources --lcom4 --index-store-path .build/debug/index/store --format json
 ```
 
 ## Xcode Build Tool Plugin

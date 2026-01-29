@@ -2,7 +2,12 @@ import Foundation
 import IndexStoreDB
 import SwiftSyntax
 
-/// Nominal Type kind (class/struct/actor)
+/// Nominal Type kind for LCOM4 cohesion analysis (class/struct/actor)
+///
+/// Note: Swift `enum` is excluded from LCOM4 analysis because:
+/// - Enums cannot have instance stored properties (only computed properties and static properties)
+/// - LCOM4 measures cohesion based on methods sharing access to instance state
+/// - Without instance stored properties, the cohesion metric doesn't meaningfully apply
 enum NominalTypeKind {
     case `class`
     case `struct`

@@ -14,8 +14,8 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
     private let enableLCOM4: Bool
 
     /// Initialize the analyzer
-    /// - Parameter projectRoot: Optional project root URL for LCOM4 analysis. If nil, LCOM4 will be disabled.
-    public init(projectRoot: URL? = nil) throws {
+    /// - Parameter indexStorePath: Optional IndexStore path for LCOM4 analysis (e.g., .build/debug/index/store). If nil, LCOM4 will be disabled.
+    public init(indexStorePath: URL? = nil) throws {
         self.cyclomaticCalculator = CyclomaticComplexityCalculator(viewMode: .sourceAccurate)
         self.cognitiveCalculator = CognitiveComplexityCalculator(viewMode: .sourceAccurate)
         self.functionDetector = FunctionDetector(viewMode: .sourceAccurate)
@@ -23,8 +23,8 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
 
         // LCOM4: High-accuracy (90-95%) semantic analysis with IndexStore-DB integration
         // Falls back to syntax-based analysis if IndexStore is not found
-        if let projectRoot = projectRoot {
-            self.lcomCalculator = try SemanticLCOMCalculator(projectRoot: projectRoot)
+        if let indexStorePath = indexStorePath {
+            self.lcomCalculator = try SemanticLCOMCalculator(indexStorePath: indexStorePath)
             self.enableLCOM4 = true
         } else {
             self.lcomCalculator = nil
