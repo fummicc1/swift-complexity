@@ -22,7 +22,6 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
         self.nominalTypeDetector = NominalTypeDetector(viewMode: .sourceAccurate)
 
         // LCOM4: High-accuracy (90-95%) semantic analysis with IndexStore-DB integration
-        // Falls back to syntax-based analysis if IndexStore is not found
         if let indexStorePath = indexStorePath {
             self.lcomCalculator = try SemanticLCOMCalculator(indexStorePath: indexStorePath)
             self.enableLCOM4 = true
