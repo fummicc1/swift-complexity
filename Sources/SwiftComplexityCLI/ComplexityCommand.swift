@@ -110,7 +110,7 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
     public func run() async throws {
         try validateFlags()
-        validateLCOM4Options()
+        try validateLCOM4Options()
         logVerboseConfiguration()
 
         do {
@@ -166,11 +166,13 @@ public struct ComplexityCommand: AsyncParsableCommand {
     }
 
     /// Validates LCOM4 options
-    private func validateLCOM4Options() {
+    private func validateLCOM4Options() throws {
         if lcom4 && indexStorePath == nil {
+            print("Error: --lcom4 requires --index-store-path option.")
             print(
-                "Warning: --lcom4 requires --index-store-path for accurate semantic analysis. Using basic syntax analysis."
+                "Example: swift-complexity Sources --lcom4 --index-store-path .build/debug/index/store"
             )
+            throw ExitCode.failure
         }
     }
 
