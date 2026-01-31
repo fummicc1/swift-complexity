@@ -78,7 +78,7 @@ jobs:
           # --- debug ---
           # For debug, check if headers exist
           ls ${TOOLCHAIN_USR}/lib/swift || (echo "Swift lib directory not found!" && exit 1)
-          test -f ${TOOLCHAIN_USR}/lib/swift/Block || (echo "Block header not found!" && exit 1)
+          test -d ${TOOLCHAIN_USR}/lib/swift/Block || (echo "Block header not found!" && exit 1)
           # --- end debug ---
           swift build --configuration release \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
