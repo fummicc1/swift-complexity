@@ -102,8 +102,10 @@ jobs:
         run: |
           # Build with debug configuration to generate IndexStore
           swift build
-          # Run LCOM4 analysis
-          swift run SwiftComplexityCLI Sources --lcom4 --index-store-path .build/debug/index/store --format json --recursive
+          # Run LCOM4 analysis using compiled binary directly
+          .build/debug/SwiftComplexityCLI Sources --lcom4 \
+            --index-store-path .build/debug/index/store \
+            --format json --recursive
 
       - name: Test LCOM4 analysis (Linux)
         if: runner.os == 'Linux'
@@ -117,8 +119,8 @@ jobs:
           swift build \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
-          # Run LCOM4 analysis (no build flags needed as binary is already built)
-          swift run SwiftComplexityCLI Sources --lcom4 \
+          # Run LCOM4 analysis using compiled binary directly (avoids rebuild)
+          .build/debug/SwiftComplexityCLI Sources --lcom4 \
             --index-store-path .build/debug/index/store \
             --toolchain-path "${TOOLCHAIN}" \
             --format json --recursive
