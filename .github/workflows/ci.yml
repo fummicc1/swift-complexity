@@ -72,7 +72,14 @@ jobs:
           # 'which swift' returns the wrapper, so we need to get the actual toolchain path
           SWIFTLY_HOME="${HOME}/.local/share/swiftly"
           TOOLCHAIN_USR=$(ls -d ${SWIFTLY_HOME}/toolchains/*/usr 2>/dev/null | head -1)
+          # Check if TOOLCHAIN_USR is found
+          test -n "${TOOLCHAIN_USR}" || (echo "Toolchain path not found!" && exit 1)
           echo "Using toolchain: ${TOOLCHAIN_USR}"
+          # --- debug ---
+          # For debug, check if headers exist
+          ls ${TOOLCHAIN_USR}/lib/swift || (echo "Swift lib directory not found!" && exit 1)
+          test -f ${TOOLCHAIN_USR}/lib/swift/Block || (echo "Block header not found!" && exit 1)
+          # --- end debug ---
           swift build --configuration release \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
