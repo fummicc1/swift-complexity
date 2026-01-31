@@ -73,6 +73,25 @@ public struct ComplexityCommand: AsyncParsableCommand {
     public var cognitiveOnly: Bool = false
 
     @Flag(
+        name: .long,
+        help: "Show LCOM4 class cohesion metrics"
+    )
+    public var lcom4: Bool = false
+
+    @Option(
+        name: .long,
+        help: "IndexStore path for LCOM4 analysis (e.g., .build/debug/index/store)",
+        completion: .directory
+    )
+    public var indexStorePath: String?
+
+    @Option(
+        name: .long,
+        help: "Swift toolchain path for LCOM4 (required on Linux, optional on macOS)"
+    )
+    public var toolchainPath: String?
+
+    @Flag(
         name: .shortAndLong,
         help: "Recursively analyze directories"
     )
@@ -96,28 +115,12 @@ public struct ComplexityCommand: AsyncParsableCommand {
     public init() {}
 
     public func run() async throws {
-        // Validate mutually exclusive flags
-        if cyclomaticOnly && cognitiveOnly {
-            print("Error: --cyclomatic-only and --cognitive-only are mutually exclusive.")
-            throw ExitCode.failure
-        }
+        try validateFlags()
+        try validateLCOM4Options()
+        logVerboseConfiguration()
 
-        if verbose {
-            print("swift-complexity v\(Self.configuration.version)")
-            print("Analyzing paths: \(paths.joined(separator: ", "))")
-            print("Output format: \(format)")
-            print("Recursive: \(recursive)")
-            if !exclude.isEmpty {
-                print("Exclude patterns: \(exclude.joined(separator: ", "))")
-            }
-            if let threshold = threshold {
-                print("Complexity threshold: \(threshold)")
-            }
-        }
-
-        // Execute analysis
         do {
-            let analyzer = ComplexityAnalyzer()
+            let analyzer = try createAnalyzer()
             let fileProcessor = FileProcessor(analyzer: analyzer)
 
             let processingOptions = ProcessingOptions(
@@ -129,13 +132,12 @@ public struct ComplexityCommand: AsyncParsableCommand {
             let results = try await fileProcessor.processFiles(
                 at: paths, options: processingOptions)
 
-            // Apply threshold filtering
             let filteredResults = filterByThreshold(results: results, threshold: threshold)
 
-            // Generate output
             let outputOptions = OutputOptions(
                 showCyclomaticOnly: cyclomaticOnly,
                 showCognitiveOnly: cognitiveOnly,
+                showLCOM4: lcom4,
                 threshold: threshold
             )
 
@@ -145,7 +147,6 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
             print(output)
 
-            // Exit with warning code if threshold exceeded and results found
             if let threshold = threshold,
                 hasExceededThreshold(results: results, threshold: threshold)
             {
@@ -162,6 +163,64 @@ public struct ComplexityCommand: AsyncParsableCommand {
         }
     }
 
+    /// Validates mutually exclusive flags
+    private func validateFlags() throws {
+        if cyclomaticOnly && cognitiveOnly {
+            print("Error: --cyclomatic-only and --cognitive-only are mutually exclusive.")
+            throw ExitCode.failure
+        }
+    }
+
+    /// Validates LCOM4 options
+    private func validateLCOM4Options() throws {
+        if lcom4 && indexStorePath == nil {
+            print("Error: --lcom4 requires --index-store-path option.")
+            print(
+                "Example: swift-complexity Sources --lcom4 --index-store-path .build/debug/index/store"
+            )
+            throw ExitCode.failure
+        }
+
+        #if os(Linux)
+            if lcom4 && toolchainPath == nil {
+                print("Error: --lcom4 requires --toolchain-path option on Linux.")
+                print(
+                    "Example: swift-complexity Sources --lcom4 --index-store-path .build/debug/index/store --toolchain-path ~/.local/share/swiftly/toolchains/swift-6.2"
+                )
+                throw ExitCode.failure
+            }
+        #endif
+    }
+
+    /// Logs verbose configuration
+    private func logVerboseConfiguration() {
+        guard verbose else { return }
+
+        print("swift-complexity v\(Self.configuration.version)")
+        print("Analyzing paths: \(paths.joined(separator: ", "))")
+        print("Output format: \(format)")
+        print("Recursive: \(recursive)")
+        if lcom4 {
+            print("LCOM4 analysis: enabled")
+            if let path = indexStorePath { print("IndexStore path: \(path)") }
+            if let path = toolchainPath { print("Toolchain path: \(path)") }
+        }
+        if !exclude.isEmpty { print("Exclude patterns: \(exclude.joined(separator: ", "))") }
+        if let t = threshold { print("Complexity threshold: \(t)") }
+    }
+
+    /// Creates a ComplexityAnalyzer instance
+    private func createAnalyzer() throws -> ComplexityAnalyzer {
+        guard lcom4, let indexStorePath = indexStorePath else {
+            return try ComplexityAnalyzer()
+        }
+        let toolchainURL = toolchainPath.map { URL(fileURLWithPath: $0) }
+        return try ComplexityAnalyzer(
+            indexStorePath: URL(fileURLWithPath: indexStorePath),
+            toolchainPath: toolchainURL
+        )
+    }
+
     // MARK: - Private Methods
 
     private func filterByThreshold(results: [ComplexityResult], threshold: Int?)
@@ -175,9 +234,21 @@ public struct ComplexityCommand: AsyncParsableCommand {
                     || function.cognitiveComplexity >= threshold
             }
 
-            guard !filteredFunctions.isEmpty else { return nil }
+            // For LCOM4, filter classes with low cohesion (LCOM4 >= 3)
+            let filteredCohesions = result.classCohesions?.filter { cohesion in
+                cohesion.lcom4 >= 3
+            }
 
-            return ComplexityResult(filePath: result.filePath, functions: filteredFunctions)
+            // Keep result if either functions or cohesions pass threshold
+            guard !filteredFunctions.isEmpty || filteredCohesions?.isEmpty == false else {
+                return nil
+            }
+
+            return ComplexityResult(
+                filePath: result.filePath,
+                functions: filteredFunctions,
+                classCohesions: filteredCohesions
+            )
         }
     }
 

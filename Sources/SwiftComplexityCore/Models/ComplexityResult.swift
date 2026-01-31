@@ -8,13 +8,25 @@ public struct ComplexityResult: Codable, Sendable {
     /// Array of function/method complexities found in the file
     public let functions: [FunctionComplexity]
 
+    /// Array of class/struct/actor cohesion metrics (optional for backward compatibility)
+    public let classCohesions: [ClassCohesion]?
+
     /// Statistical summary for the file
     public let summary: FileSummary
 
-    public init(filePath: String, functions: [FunctionComplexity]) {
+    /// Cohesion summary (optional, only present when LCOM4 analysis is enabled)
+    public let cohesionSummary: CohesionSummary?
+
+    public init(
+        filePath: String,
+        functions: [FunctionComplexity],
+        classCohesions: [ClassCohesion]? = nil
+    ) {
         self.filePath = filePath
         self.functions = functions
+        self.classCohesions = classCohesions
         self.summary = FileSummary(functions: functions)
+        self.cohesionSummary = classCohesions.map { CohesionSummary(classes: $0) }
     }
 }
 

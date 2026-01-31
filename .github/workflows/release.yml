@@ -58,22 +58,22 @@ jobs:
         if: runner.os == 'macOS'
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "16.4"
+          xcode-version: "26.1"
 
       - name: Setup Swift
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             # Install dependencies for Swiftly
             sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev pkg-config python3-lldb-13
-            
+
             # Install Swiftly
             curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
             tar zxf swiftly-$(uname -m).tar.gz
             ./swiftly init --verbose --assume-yes --skip-install
             . ~/.local/share/swiftly/env.sh
-            
+
             # Install Swift
-            swiftly install 6.1
+            swiftly install 6.2
             echo "$(dirname $(which swift))" >> $GITHUB_PATH
           else
             # macOS - use Xcode's Swift
@@ -112,22 +112,22 @@ jobs:
         if: runner.os == 'macOS'
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "16.4"
+          xcode-version: "26.1"
 
       - name: Setup Swift
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             # Install dependencies for Swiftly
             sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev pkg-config python3-lldb-13
-            
+
             # Install Swiftly
             curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
             tar zxf swiftly-$(uname -m).tar.gz
             ./swiftly init --verbose --assume-yes --skip-install
             . ~/.local/share/swiftly/env.sh
-            
+
             # Install Swift
-            swiftly install 6.1
+            swiftly install 6.2
             echo "$(dirname $(which swift))" >> $GITHUB_PATH
           else
             # macOS - use Xcode's Swift
@@ -144,9 +144,14 @@ jobs:
               --arch ${{ matrix.arch }} \
               --product SwiftComplexityCLI
           else
+            # Linux: Get toolchain path for libdispatch headers
+            SWIFTLY_HOME="${HOME}/.local/share/swiftly"
+            TOOLCHAIN_USR=$(ls -d ${SWIFTLY_HOME}/toolchains/*/usr 2>/dev/null | head -1)
             swift build \
               --configuration release \
-              --product SwiftComplexityCLI
+              --product SwiftComplexityCLI \
+              -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
+              -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
           fi
 
       - name: Create archive

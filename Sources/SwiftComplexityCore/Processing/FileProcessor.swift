@@ -43,8 +43,27 @@ public actor FileProcessor: FileProcessing {
     private let analyzer: ComplexityAnalyzer
     private let fileManager: FileManager
 
-    public init(analyzer: ComplexityAnalyzer = ComplexityAnalyzer()) {
+    /// Initialize with a custom analyzer
+    public init(analyzer: ComplexityAnalyzer) {
         self.analyzer = analyzer
+        self.fileManager = FileManager.default
+    }
+
+    /// Initialize with a default analyzer (no LCOM4 support)
+    public init() throws {
+        self.analyzer = try ComplexityAnalyzer()
+        self.fileManager = FileManager.default
+    }
+
+    /// Initialize with IndexStore path for LCOM4 support
+    /// - Parameters:
+    ///   - indexStorePath: Path to the IndexStore (e.g., .build/debug/index/store)
+    ///   - toolchainPath: Optional Swift toolchain path. On Linux, this is required.
+    public init(indexStorePath: URL, toolchainPath: URL? = nil) throws {
+        self.analyzer = try ComplexityAnalyzer(
+            indexStorePath: indexStorePath,
+            toolchainPath: toolchainPath
+        )
         self.fileManager = FileManager.default
     }
 
