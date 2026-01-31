@@ -90,6 +90,32 @@ jobs:
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
 
+      - name: Test LCOM4 analysis (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Build with debug configuration to generate IndexStore
+          swift build
+          # Run LCOM4 analysis
+          swift run SwiftComplexityCLI Sources --lcom4 --index-store-path .build/debug/index/store --format json --recursive
+
+      - name: Test LCOM4 analysis (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          SWIFTLY_HOME="${HOME}/.local/share/swiftly"
+          # Get toolchain path (without /usr suffix)
+          TOOLCHAIN=$(ls -d ${SWIFTLY_HOME}/toolchains/* 2>/dev/null | head -1)
+          TOOLCHAIN_USR="${TOOLCHAIN}/usr"
+          echo "Using toolchain: ${TOOLCHAIN}"
+          # Build with debug configuration to generate IndexStore
+          swift build \
+            -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
+            -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
+          # Run LCOM4 analysis (no build flags needed as binary is already built)
+          swift run SwiftComplexityCLI Sources --lcom4 \
+            --index-store-path .build/debug/index/store \
+            --toolchain-path "${TOOLCHAIN}" \
+            --format json --recursive
+
   lint:
     name: Code Quality
     runs-on: macos-15

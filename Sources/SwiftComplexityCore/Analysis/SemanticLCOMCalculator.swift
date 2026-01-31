@@ -8,6 +8,8 @@ enum LCOMError: LocalizedError {
     case noMembersFound(className: String)
     case parsingFailed(className: String, underlying: Error)
     case indexStoreNotFound(indexStorePath: String)
+    case libIndexStoreNotFound(searchedPath: String)
+    case toolchainRequired
     case indexDBInitializationFailed(underlying: Error)
     case symbolNotFound(symbolName: String, usr: String?)
     case queryTimeout(query: String)
@@ -23,6 +25,14 @@ enum LCOMError: LocalizedError {
                 Index store not found at '\(indexStorePath)'.
                 Run 'swift build' first to generate the index.
                 """
+        case .libIndexStoreNotFound(let searchedPath):
+            return "libIndexStore not found at: \(searchedPath)"
+        case .toolchainRequired:
+            #if os(Linux)
+                return "--toolchain-path is required for LCOM4 analysis on Linux"
+            #else
+                return "Failed to detect Xcode toolchain. Please specify --toolchain-path"
+            #endif
         case .indexDBInitializationFailed(let error):
             return "Failed to initialize IndexStoreDB: \(error.localizedDescription)"
         case .symbolNotFound(let symbolName, let usr):
@@ -95,16 +105,20 @@ actor SemanticLCOMCalculator {
     private let indexStorePath: URL
 
     /// Initialize with explicit IndexStore path
-    /// - Parameter indexStorePath: Direct path to the IndexStore (e.g., .build/debug/index/store)
-    init(indexStorePath: URL) throws {
+    /// - Parameters:
+    ///   - indexStorePath: Direct path to the IndexStore (e.g., .build/debug/index/store)
+    ///   - toolchainPath: Optional Swift toolchain path (e.g., /path/to/toolchain/usr).
+    ///                    On macOS, if nil, Xcode toolchain is auto-detected.
+    ///                    On Linux, this is required.
+    init(indexStorePath: URL, toolchainPath: URL? = nil) throws {
         self.indexStorePath = indexStorePath
 
         guard FileManager.default.fileExists(atPath: indexStorePath.path) else {
             throw LCOMError.indexStoreNotFound(indexStorePath: indexStorePath.path)
         }
 
-        // Get libIndexStore.dylib path (Xcode toolchain)
-        let libIndexStorePath = try Self.findLibIndexStore()
+        // Get libIndexStore path (platform-specific)
+        let libIndexStorePath = try Self.findLibIndexStore(toolchainPath: toolchainPath)
 
         self.indexStoreDB = try IndexStoreDB(
             storePath: indexStorePath.path,
@@ -435,54 +449,78 @@ actor SemanticLCOMCalculator {
 
     // MARK: - Helper Methods
 
-    /// Searches for libIndexStore.dylib path
-    /// TODO: Linux support - needs modification to work on Linux
-    private static func findLibIndexStore() throws -> String {
-        // Get Xcode toolchain path using xcrun
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-        process.arguments = ["--show-sdk-path"]
+    /// Searches for libIndexStore path
+    /// - Parameter toolchainPath: Optional toolchain path (e.g., ~/.local/share/swiftly/toolchains/swift-6.2).
+    ///   On macOS, if nil, auto-detects from Xcode.
+    ///   On Linux, this is required.
+    /// - Returns: Path to libIndexStore.dylib (macOS) or libIndexStore.so (Linux)
+    private static func findLibIndexStore(toolchainPath: URL?) throws -> String {
+        #if os(Linux)
+            let libName = "libIndexStore.so"
+        #else
+            let libName = "libIndexStore.dylib"
+        #endif
 
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        guard
-            let sdkPath = String(data: data, encoding: .utf8)?.trimmingCharacters(
-                in: .whitespacesAndNewlines)
-        else {
-            throw LCOMError.indexDBInitializationFailed(
-                underlying: NSError(
-                    domain: "SemanticLCOMCalculator", code: 1,
-                    userInfo: [
-                        NSLocalizedDescriptionKey: "Failed to get SDK path from xcrun"
-                    ])
-            )
+        // If toolchainPath is provided, use it directly
+        // Expected structure: <toolchainPath>/usr/lib/libIndexStore.{so,dylib}
+        if let toolchainPath = toolchainPath {
+            let libPath =
+                toolchainPath
+                .appendingPathComponent("usr")
+                .appendingPathComponent("lib")
+                .appendingPathComponent(libName)
+            guard FileManager.default.fileExists(atPath: libPath.path) else {
+                throw LCOMError.libIndexStoreNotFound(searchedPath: libPath.path)
+            }
+            return libPath.path
         }
 
-        // Infer toolchain lib directory from SDK path
-        // /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
-        // -> /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/libIndexStore.dylib
-        let xcodeAppPath = sdkPath.components(separatedBy: "/Platforms/").first ?? ""
-        let libPath =
-            "\(xcodeAppPath)/Toolchains/XcodeDefault.xctoolchain/usr/lib/libIndexStore.dylib"
-
-        guard FileManager.default.fileExists(atPath: libPath) else {
-            throw LCOMError.indexDBInitializationFailed(
-                underlying: NSError(
-                    domain: "SemanticLCOMCalculator", code: 2,
-                    userInfo: [
-                        NSLocalizedDescriptionKey: "libIndexStore.dylib not found at: \(libPath)"
-                    ])
-            )
-        }
-
-        return libPath
+        #if os(macOS)
+            // Auto-detect Xcode toolchain on macOS
+            return try findLibIndexStoreFromXcode()
+        #else
+            // On Linux, toolchainPath is required
+            throw LCOMError.toolchainRequired
+        #endif
     }
+
+    #if os(macOS)
+        /// Auto-detect libIndexStore from Xcode toolchain (macOS only)
+        private static func findLibIndexStoreFromXcode() throws -> String {
+            // Get Xcode toolchain path using xcrun
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
+            process.arguments = ["--show-sdk-path"]
+
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = pipe
+
+            try process.run()
+            process.waitUntilExit()
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard
+                let sdkPath = String(data: data, encoding: .utf8)?.trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+            else {
+                throw LCOMError.toolchainRequired
+            }
+
+            // Infer toolchain lib directory from SDK path
+            // /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+            // -> /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/libIndexStore.dylib
+            let xcodeAppPath = sdkPath.components(separatedBy: "/Platforms/").first ?? ""
+            let libPath =
+                "\(xcodeAppPath)/Toolchains/XcodeDefault.xctoolchain/usr/lib/libIndexStore.dylib"
+
+            guard FileManager.default.fileExists(atPath: libPath) else {
+                throw LCOMError.libIndexStoreNotFound(searchedPath: libPath)
+            }
+
+            return libPath
+        }
+    #endif
 }
 
 // MARK: - Syntax Visitors (Fallback)

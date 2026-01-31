@@ -85,6 +85,12 @@ public struct ComplexityCommand: AsyncParsableCommand {
     )
     public var indexStorePath: String?
 
+    @Option(
+        name: .long,
+        help: "Swift toolchain path for LCOM4 (required on Linux, optional on macOS)"
+    )
+    public var toolchainPath: String?
+
     @Flag(
         name: .shortAndLong,
         help: "Recursively analyze directories"
@@ -174,6 +180,16 @@ public struct ComplexityCommand: AsyncParsableCommand {
             )
             throw ExitCode.failure
         }
+
+        #if os(Linux)
+            if lcom4 && toolchainPath == nil {
+                print("Error: --lcom4 requires --toolchain-path option on Linux.")
+                print(
+                    "Example: swift-complexity Sources --lcom4 --index-store-path .build/debug/index/store --toolchain-path ~/.local/share/swiftly/toolchains/swift-6.2"
+                )
+                throw ExitCode.failure
+            }
+        #endif
     }
 
     /// Logs verbose configuration
@@ -187,6 +203,7 @@ public struct ComplexityCommand: AsyncParsableCommand {
         if lcom4 {
             print("LCOM4 analysis: enabled")
             if let path = indexStorePath { print("IndexStore path: \(path)") }
+            if let path = toolchainPath { print("Toolchain path: \(path)") }
         }
         if !exclude.isEmpty { print("Exclude patterns: \(exclude.joined(separator: ", "))") }
         if let t = threshold { print("Complexity threshold: \(t)") }
@@ -197,7 +214,11 @@ public struct ComplexityCommand: AsyncParsableCommand {
         guard lcom4, let indexStorePath = indexStorePath else {
             return try ComplexityAnalyzer()
         }
-        return try ComplexityAnalyzer(indexStorePath: URL(fileURLWithPath: indexStorePath))
+        let toolchainURL = toolchainPath.map { URL(fileURLWithPath: $0) }
+        return try ComplexityAnalyzer(
+            indexStorePath: URL(fileURLWithPath: indexStorePath),
+            toolchainPath: toolchainURL
+        )
     }
 
     // MARK: - Private Methods

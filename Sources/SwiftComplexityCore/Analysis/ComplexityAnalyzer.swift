@@ -14,8 +14,11 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
     private let enableLCOM4: Bool
 
     /// Initialize the analyzer
-    /// - Parameter indexStorePath: Optional IndexStore path for LCOM4 analysis (e.g., .build/debug/index/store). If nil, LCOM4 will be disabled.
-    public init(indexStorePath: URL? = nil) throws {
+    /// - Parameters:
+    ///   - indexStorePath: Optional IndexStore path for LCOM4 analysis (e.g., .build/debug/index/store). If nil, LCOM4 will be disabled.
+    ///   - toolchainPath: Optional Swift toolchain path for LCOM4 (e.g., ~/.local/share/swiftly/toolchains/swift-6.2).
+    ///                    On macOS, if nil, Xcode toolchain is auto-detected. On Linux, this is required for LCOM4.
+    public init(indexStorePath: URL? = nil, toolchainPath: URL? = nil) throws {
         self.cyclomaticCalculator = CyclomaticComplexityCalculator(viewMode: .sourceAccurate)
         self.cognitiveCalculator = CognitiveComplexityCalculator(viewMode: .sourceAccurate)
         self.functionDetector = FunctionDetector(viewMode: .sourceAccurate)
@@ -23,7 +26,10 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
 
         // LCOM4: High-accuracy (90-95%) semantic analysis with IndexStore-DB integration
         if let indexStorePath = indexStorePath {
-            self.lcomCalculator = try SemanticLCOMCalculator(indexStorePath: indexStorePath)
+            self.lcomCalculator = try SemanticLCOMCalculator(
+                indexStorePath: indexStorePath,
+                toolchainPath: toolchainPath
+            )
             self.enableLCOM4 = true
         } else {
             self.lcomCalculator = nil
