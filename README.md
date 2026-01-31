@@ -230,10 +230,13 @@ Class Cohesion (LCOM4):
 
 ```bash
 # Using Swiftly-installed toolchain
-swift build
-swift run SwiftComplexityCLI Sources --lcom4 \
+TOOLCHAIN=~/.local/share/swiftly/toolchains/swift-6.2.2-RELEASE
+swift build \
+  -Xcxx -I${TOOLCHAIN}/usr/lib/swift \
+  -Xcxx -I${TOOLCHAIN}/usr/lib/swift/Block
+.build/debug/SwiftComplexityCLI Sources --lcom4 \
   --index-store-path .build/debug/index/store \
-  --toolchain-path ~/.local/share/swiftly/toolchains/swift-6.2.2-RELEASE
+  --toolchain-path ${TOOLCHAIN}
 ```
 
 ## License
