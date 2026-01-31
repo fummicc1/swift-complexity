@@ -144,9 +144,14 @@ jobs:
               --arch ${{ matrix.arch }} \
               --product SwiftComplexityCLI
           else
+            # Linux: Get toolchain path for libdispatch headers
+            SWIFTLY_HOME="${HOME}/.local/share/swiftly"
+            TOOLCHAIN_USR=$(ls -d ${SWIFTLY_HOME}/toolchains/*/usr 2>/dev/null | head -1)
             swift build \
               --configuration release \
-              --product SwiftComplexityCLI
+              --product SwiftComplexityCLI \
+              -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
+              -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
           fi
 
       - name: Create archive
