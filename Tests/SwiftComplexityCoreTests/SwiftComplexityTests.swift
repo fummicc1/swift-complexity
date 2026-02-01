@@ -337,7 +337,7 @@ struct FunctionDetectionTests {
         #expect(functions.count == 1)
     }
 
-    @Test("Computed property detection (Issue #15)")
+    @Test("Computed property detection")
     func computedPropertyDetection() throws {
         // Given
         let code = try loadFixture("computed_property")
@@ -367,7 +367,7 @@ struct FunctionDetectionTests {
         #expect(names.contains("observedProperty.didSet"))
     }
 
-    @Test("Shorthand computed property complexity (Issue #15)")
+    @Test("Shorthand computed property complexity")
     func shorthandComputedPropertyComplexity() async throws {
         // Given
         let code = try loadFixture("computed_property")
@@ -386,7 +386,7 @@ struct FunctionDetectionTests {
         #expect(shorthandGetter?.cognitiveComplexity == 3)
     }
 
-    @Test("Explicit accessor complexity (Issue #15)")
+    @Test("Explicit accessor complexity")
     func explicitAccessorComplexity() async throws {
         // Given
         let code = try loadFixture("computed_property")

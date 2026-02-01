@@ -89,25 +89,11 @@ class FunctionDetector: SyntaxVisitor {
 
             // Check for shorthand computed property (CodeBlockItemListSyntax directly)
             if case .getter(let statements) = accessorBlock.accessors {
-                let propertyName = extractPropertyName(from: binding)
-                let signature = extractComputedPropertySignature(from: node, binding: binding)
-                let location = extractLocation(from: binding.pattern)
-
-                // Create a CodeBlockSyntax from the statements for consistency with other function bodies
-                let codeBlock = CodeBlockSyntax(
-                    leftBrace: .leftBraceToken(),
-                    statements: statements,
-                    rightBrace: .rightBraceToken()
+                appendShorthandComputedProperty(
+                    from: node,
+                    binding: binding,
+                    statements: statements
                 )
-
-                let detectedFunction = DetectedFunction(
-                    name: propertyName,
-                    signature: signature,
-                    body: codeBlock,
-                    location: location
-                )
-
-                detectedFunctions.append(detectedFunction)
             }
             // Explicit accessors (get/set/didSet/willSet) are handled by visit(AccessorDeclSyntax)
         }
@@ -179,23 +165,51 @@ class FunctionDetector: SyntaxVisitor {
         return SourceLocation(line: sourceLocation.line, column: sourceLocation.column)
     }
 
-    private func extractPropertyName(from binding: PatternBindingSyntax) -> String {
+    private func extractPropertyName(from binding: PatternBindingSyntax) -> String? {
         if let identifier = binding.pattern.as(IdentifierPatternSyntax.self) {
             return identifier.identifier.text
         }
-        return "unknown"
+        return nil
     }
 
     private func extractComputedPropertySignature(
         from variable: VariableDeclSyntax,
         binding: PatternBindingSyntax
     ) -> String {
-        var signature = variable.bindingSpecifier.text + " "  // "var" or "let"
-        signature += binding.pattern.description
+        var parts = [variable.bindingSpecifier.text, binding.pattern.description]
         if let typeAnnotation = binding.typeAnnotation {
-            signature += typeAnnotation.description
+            parts.append(typeAnnotation.description.trimmingCharacters(in: .whitespaces))
         }
-        return signature.trimmingCharacters(in: .whitespacesAndNewlines)
+        return parts.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func appendShorthandComputedProperty(
+        from variable: VariableDeclSyntax,
+        binding: PatternBindingSyntax,
+        statements: CodeBlockItemListSyntax
+    ) {
+        guard let propertyName = extractPropertyName(from: binding) else {
+            return  // Skip if property name cannot be extracted
+        }
+
+        let signature = extractComputedPropertySignature(from: variable, binding: binding)
+        let location = extractLocation(from: binding.pattern)
+
+        // Create a CodeBlockSyntax from the statements for consistency with other function bodies
+        let codeBlock = CodeBlockSyntax(
+            leftBrace: .leftBraceToken(),
+            statements: statements,
+            rightBrace: .rightBraceToken()
+        )
+
+        let detectedFunction = DetectedFunction(
+            name: propertyName,
+            signature: signature,
+            body: codeBlock,
+            location: location
+        )
+
+        detectedFunctions.append(detectedFunction)
     }
 
     private func findParentPropertyName(from node: AccessorDeclSyntax) -> String? {
