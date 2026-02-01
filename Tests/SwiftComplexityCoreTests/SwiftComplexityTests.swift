@@ -336,6 +336,82 @@ struct FunctionDetectionTests {
         // Then
         #expect(functions.count == 1)
     }
+
+    @Test("Computed property detection")
+    func computedPropertyDetection() throws {
+        // Given
+        let code = try loadFixture("computed_property")
+        let sourceFile = Parser.parse(source: code)
+        let detector = FunctionDetector(viewMode: .sourceAccurate)
+
+        // When
+        let functions = detector.detectFunctions(in: sourceFile)
+        let names = functions.map(\.name)
+
+        // Then
+        // shorthandGetter: 1 (shorthand computed property)
+        // explicitProperty.get: 1 (explicit get accessor)
+        // explicitProperty.set: 1 (explicit set accessor)
+        // observedProperty.didSet: 1 (property observer)
+        // Total: 4 detected functions/accessors
+        #expect(functions.count == 4)
+
+        // Verify shorthand computed property is detected with property name
+        #expect(names.contains("shorthandGetter"))
+
+        // Verify explicit accessors include property name
+        #expect(names.contains("explicitProperty.get"))
+        #expect(names.contains("explicitProperty.set"))
+
+        // Verify property observers include property name
+        #expect(names.contains("observedProperty.didSet"))
+    }
+
+    @Test("Shorthand computed property complexity")
+    func shorthandComputedPropertyComplexity() async throws {
+        // Given
+        let code = try loadFixture("computed_property")
+        let sourceFile = Parser.parse(source: code)
+        let analyzer = try ComplexityAnalyzer()
+
+        // When
+        let result = try await analyzer.analyze(sourceFile: sourceFile, filePath: "test.swift")
+
+        // Then - verify shorthandGetter complexity
+        let shorthandGetter = result.functions.first { $0.name == "shorthandGetter" }
+        #expect(shorthandGetter != nil, "shorthandGetter should be detected")
+        // Expected: cyclomatic = 3 (base 1 + 2 if statements)
+        // Expected: cognitive = 3 (2 if statements + 1 else)
+        #expect(shorthandGetter?.cyclomaticComplexity == 3)
+        #expect(shorthandGetter?.cognitiveComplexity == 3)
+    }
+
+    @Test("Explicit accessor complexity")
+    func explicitAccessorComplexity() async throws {
+        // Given
+        let code = try loadFixture("computed_property")
+        let sourceFile = Parser.parse(source: code)
+        let analyzer = try ComplexityAnalyzer()
+
+        // When
+        let result = try await analyzer.analyze(sourceFile: sourceFile, filePath: "test.swift")
+
+        // Then - verify explicitProperty.get complexity
+        let getter = result.functions.first { $0.name == "explicitProperty.get" }
+        #expect(getter != nil, "explicitProperty.get should be detected")
+        // Expected: cyclomatic = 2 (base 1 + 1 if statement)
+        // Expected: cognitive = 1 (1 if statement)
+        #expect(getter?.cyclomaticComplexity == 2)
+        #expect(getter?.cognitiveComplexity == 1)
+
+        // Then - verify explicitProperty.set complexity
+        let setter = result.functions.first { $0.name == "explicitProperty.set" }
+        #expect(setter != nil, "explicitProperty.set should be detected")
+        // Expected: cyclomatic = 1 (base only)
+        // Expected: cognitive = 0 (no control flow)
+        #expect(setter?.cyclomaticComplexity == 1)
+        #expect(setter?.cognitiveComplexity == 0)
+    }
 }
 
 // MARK: - Output Formatter Tests
