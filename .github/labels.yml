@@ -1,0 +1,85 @@
+# Label definitions for swift-complexity repository
+# These labels are used for:
+# 1. PR categorization in auto-generated release notes (.github/release.yml)
+# 2. Issue/PR organization
+#
+# Sync labels using: gh label sync --filename .github/labels.yml
+
+# === Release Notes Categories ===
+# These labels determine how PRs appear in auto-generated release notes
+
+- name: breaking-change
+  color: "d93f0b"
+  description: "Breaking changes that require migration"
+
+- name: enhancement
+  color: "a2eeef"
+  description: "New feature or request"
+
+- name: feature
+  color: "0e8a16"
+  description: "New feature implementation"
+
+- name: bug
+  color: "d73a4a"
+  description: "Something isn't working"
+
+- name: fix
+  color: "ffc107"
+  description: "Bug fix or correction"
+
+- name: documentation
+  color: "0075ca"
+  description: "Improvements or additions to documentation"
+
+- name: skip-changelog
+  color: "ededed"
+  description: "Exclude from release notes"
+
+# === Standard GitHub Labels ===
+
+- name: duplicate
+  color: "cfd3d7"
+  description: "This issue or pull request already exists"
+
+- name: good first issue
+  color: "7057ff"
+  description: "Good for newcomers"
+
+- name: help wanted
+  color: "008672"
+  description: "Extra attention is needed"
+
+- name: invalid
+  color: "e4e669"
+  description: "This doesn't seem right"
+
+- name: question
+  color: "d876e3"
+  description: "Further information is requested"
+
+- name: wontfix
+  color: "ffffff"
+  description: "This will not be worked on"
+
+# === Development Workflow ===
+
+- name: dependencies
+  color: "0366d6"
+  description: "Pull requests that update a dependency file"
+
+- name: ci
+  color: "fbca04"
+  description: "CI/CD related changes"
+
+- name: refactor
+  color: "c5def5"
+  description: "Code refactoring without functional changes"
+
+- name: test
+  color: "bfd4f2"
+  description: "Test improvements or additions"
+
+- name: performance
+  color: "5319e7"
+  description: "Performance improvements"
