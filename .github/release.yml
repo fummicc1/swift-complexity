@@ -11,11 +11,9 @@ changelog:
     - title: "New Features"
       labels:
         - enhancement
-        - feature
     - title: "Bug Fixes"
       labels:
         - bug
-        - fix
     - title: "Documentation"
       labels:
         - documentation

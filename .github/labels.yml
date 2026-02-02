@@ -14,19 +14,11 @@
 
 - name: enhancement
   color: "a2eeef"
-  description: "New feature or request"
-
-- name: feature
-  color: "0e8a16"
-  description: "New feature implementation"
+  description: "New feature or improvement"
 
 - name: bug
   color: "d73a4a"
-  description: "Something isn't working"
-
-- name: fix
-  color: "ffc107"
-  description: "Bug fix or correction"
+  description: "Bug report or fix"
 
 - name: documentation
   color: "0075ca"
