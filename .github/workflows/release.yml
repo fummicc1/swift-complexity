@@ -221,48 +221,31 @@ jobs:
           merge-multiple: true
           path: ./artifacts
 
-      - name: Generate release notes
-        id: release_notes
+      - name: Generate release body
+        id: release_body
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
 
-          # Generate changelog from git commits
-          # Get the previous tag, excluding the current release tag
-          PREVIOUS_TAG=$(git tag --list "v*" --sort=-version:refname | grep -v "^v${VERSION}$" | head -1)
-
-          if [[ -n "$PREVIOUS_TAG" ]]; then
-            COMMITS=$(git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..HEAD)
-          else
-            # No previous tags found, use recent commits
-            COMMITS=$(git log --pretty=format:"- %s (%h)" HEAD~10..HEAD)
-          fi
-
-          cat > release_notes.md << EOF
-          ## What's Changed
-
-          ${COMMITS}
-
+          cat > release_body.md << EOF
           ## Installation
 
           ### Download Pre-built Binary
 
-          1. Download the appropriate binary for your platform and architecture:
-             - **macOS Apple Silicon (M1/M2/M3)**: \`swift-complexity-${VERSION}-macos-arm64.tar.gz\`
-             - **macOS Intel**: \`swift-complexity-${VERSION}-macos-x86_64.tar.gz\`
-             - **Linux x86_64**: \`swift-complexity-${VERSION}-linux-x86_64.tar.gz\`
+          Download the appropriate binary for your platform:
+          - **macOS Apple Silicon (M1/M2/M3)**: \`SwiftComplexityCLI-${VERSION}-macos-arm64.tar.gz\`
+          - **macOS Intel**: \`SwiftComplexityCLI-${VERSION}-macos-x86_64.tar.gz\`
+          - **Linux x86_64**: \`SwiftComplexityCLI-${VERSION}-linux-x86_64.tar.gz\`
 
-          2. Extract and install:
-             \`\`\`bash
-             # Extract the downloaded archive
-             tar -xzf swift-complexity-${VERSION}-*.tar.gz
-             cd swift-complexity-${VERSION}-*
-             ./install.sh
-             \`\`\`
+          \`\`\`bash
+          tar -xzf SwiftComplexityCLI-\${VERSION}-*.tar.gz
+          cd SwiftComplexityCLI-\${VERSION}-*
+          ./install.sh
+          \`\`\`
 
           ### Build from Source
 
           \`\`\`bash
-          git clone https://github.com/\${{ github.repository }}.git
+          git clone https://github.com/${{ github.repository }}.git
           cd swift-complexity
           git checkout v${VERSION}
           swift build -c release
@@ -270,23 +253,20 @@ jobs:
 
           ## Verification
 
-          All binaries are signed and checksums are provided for verification.
-
           \`\`\`bash
-          # Verify checksum (example for macOS)
-          shasum -a 256 -c swift-complexity-${VERSION}-*.tar.gz.sha256
+          shasum -a 256 -c SwiftComplexityCLI-\${VERSION}-*.tar.gz.sha256
           \`\`\`
           EOF
 
-          echo "Generated release notes:"
-          cat release_notes.md
+          echo "Generated release body:"
+          cat release_body.md
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.validate.outputs.version }}
           name: v${{ needs.validate.outputs.version }}
-          body_path: release_notes.md
+          body_path: release_body.md
           draft: false
           prerelease: ${{ needs.validate.outputs.is_prerelease == 'true' }}
           files: |
