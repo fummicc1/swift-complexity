@@ -78,6 +78,14 @@ struct ParamExtractorTests {
 
 @Suite("AnalyzeCodeStringHandler")
 struct AnalyzeCodeStringHandlerTests {
+    /// Helper to extract text content from a CallTool.Result
+    private func textContent(_ result: CallTool.Result) -> String? {
+        result.content.first.flatMap {
+            if case .text(let t) = $0 { return t }
+            return nil
+        }
+    }
+
     @Test("Analyze simple Swift function")
     func analyzeSimpleFunction() async {
         let code = """
@@ -189,6 +197,129 @@ struct AnalyzeComplexityHandlerValidationTests {
         ]
         let result = await AnalyzeComplexityHandler.handle(args)
         #expect(result.isError == true)
+    }
+}
+
+// MARK: - OutputFormatter LCOM4 Integration Tests
+
+@Suite("OutputFormatter LCOM4 Integration")
+struct OutputFormatterLCOM4Tests {
+    @Test("Text format shows function table even when showLCOM4 is true")
+    func textFormatShowsFunctionsWithLCOM4() {
+        let result = ComplexityResult(
+            filePath: "Test.swift",
+            functions: [
+                FunctionComplexity(
+                    name: "foo",
+                    signature: "func foo()",
+                    cyclomaticComplexity: 3,
+                    cognitiveComplexity: 2,
+                    location: SourceLocation(line: 1, column: 1)
+                )
+            ],
+            classCohesions: [
+                ClassCohesion(
+                    name: "TestClass",
+                    type: .class,
+                    lcom4: 2,
+                    methodCount: 3,
+                    propertyCount: 2,
+                    location: SourceLocation(line: 10, column: 1)
+                )
+            ]
+        )
+
+        let formatter = OutputFormatter()
+        let options = OutputOptions(showLCOM4: true)
+        let output = formatter.format(results: [result], format: .text, options: options)
+
+        // Function table must be present even with showLCOM4
+        #expect(output.contains("foo"))
+        #expect(output.contains("Function/Method"))
+        // Cohesion table must also be present
+        #expect(output.contains("LCOM4"))
+        #expect(output.contains("TestClass"))
+    }
+
+    @Test("JSON format includes both functions and cohesion when showLCOM4 is true")
+    func jsonFormatIncludesBothWithLCOM4() {
+        let result = ComplexityResult(
+            filePath: "Test.swift",
+            functions: [
+                FunctionComplexity(
+                    name: "bar",
+                    signature: "func bar()",
+                    cyclomaticComplexity: 5,
+                    cognitiveComplexity: 3,
+                    location: SourceLocation(line: 1, column: 1)
+                )
+            ],
+            classCohesions: [
+                ClassCohesion(
+                    name: "MyClass",
+                    type: .struct,
+                    lcom4: 1,
+                    methodCount: 2,
+                    propertyCount: 1,
+                    location: SourceLocation(line: 5, column: 1)
+                )
+            ]
+        )
+
+        let formatter = OutputFormatter()
+        let options = OutputOptions(showLCOM4: true)
+        let output = formatter.format(results: [result], format: .json, options: options)
+
+        #expect(output.contains("bar"))
+        #expect(output.contains("MyClass"))
+    }
+}
+
+// MARK: - Threshold Filtering Tests
+
+@Suite("Threshold Filtering")
+struct ThresholdFilteringTests {
+    @Test("Threshold filters functions but preserves cohesion data")
+    func thresholdPreservesCohesion() {
+        let result = ComplexityResult(
+            filePath: "Test.swift",
+            functions: [
+                FunctionComplexity(
+                    name: "simple",
+                    signature: "func simple()",
+                    cyclomaticComplexity: 1,
+                    cognitiveComplexity: 0,
+                    location: SourceLocation(line: 1, column: 1)
+                ),
+                FunctionComplexity(
+                    name: "complex",
+                    signature: "func complex()",
+                    cyclomaticComplexity: 15,
+                    cognitiveComplexity: 20,
+                    location: SourceLocation(line: 10, column: 1)
+                ),
+            ],
+            classCohesions: [
+                ClassCohesion(
+                    name: "TestClass",
+                    type: .class,
+                    lcom4: 1,
+                    methodCount: 2,
+                    propertyCount: 1,
+                    location: SourceLocation(line: 1, column: 1)
+                )
+            ]
+        )
+
+        let formatter = OutputFormatter()
+        let options = OutputOptions(showLCOM4: true, threshold: 10)
+        let output = formatter.format(results: [result], format: .json, options: options)
+
+        // Both functions should be in raw output (filtering is done by handler, not formatter)
+        #expect(output.contains("simple"))
+        #expect(output.contains("complex"))
+        // Cohesion data must be preserved regardless of threshold
+        #expect(output.contains("TestClass"))
     }
 }
 

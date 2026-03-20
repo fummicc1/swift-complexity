@@ -103,18 +103,15 @@ enum AnalyzeComplexityHandler {
                     || function.cognitiveComplexity >= threshold
             }
 
-            let filteredCohesions = result.classCohesions?.filter { cohesion in
-                cohesion.lcom4 >= 3
-            }
-
-            guard !filteredFunctions.isEmpty || filteredCohesions?.isEmpty == false else {
+            // Threshold only filters functions; cohesion data is always preserved
+            guard !filteredFunctions.isEmpty || result.classCohesions?.isEmpty == false else {
                 return nil
             }
 
             return ComplexityResult(
                 filePath: result.filePath,
                 functions: filteredFunctions,
-                classCohesions: filteredCohesions
+                classCohesions: result.classCohesions
             )
         }
     }

@@ -175,6 +175,14 @@ mint install fummicc1/swift-complexity --product SwiftComplexityMCP
 
 A ready-to-use Claude Code plugin is available in `claude-plugin/`.
 
+**Prerequisite:** The plugin requires `SwiftComplexityMCP` binary in your PATH. Install via Mint first:
+
+```bash
+mint install fummicc1/swift-complexity --product SwiftComplexityMCP
+```
+
+Then load the plugin:
+
 ```bash
 # Load the plugin
 claude --plugin-dir ./claude-plugin

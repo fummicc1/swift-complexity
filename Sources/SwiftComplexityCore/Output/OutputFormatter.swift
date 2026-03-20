@@ -62,7 +62,7 @@ public class OutputFormatter {
         result: ComplexityResult,
         options: OutputOptions
     ) -> String? {
-        guard !options.showLCOM4, !result.functions.isEmpty else { return nil }
+        guard !result.functions.isEmpty else { return nil }
 
         var output = formatTableHeader(options: options)
         output += formatTableSeparator(options: options)
