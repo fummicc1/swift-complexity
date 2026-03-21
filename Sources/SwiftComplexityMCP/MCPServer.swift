@@ -24,6 +24,6 @@ struct SwiftComplexityMCPServer {
         try await server.start(transport: transport)
 
         // Keep the server running until the process is terminated
-        try await Task.sleep(for: .seconds(Double.infinity))
+        try await Task.sleep(for: .seconds(60 * 60 * 24 * 365 * 100))
     }
 }
