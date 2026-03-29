@@ -18,6 +18,10 @@ let package = Package(
       name: "SwiftComplexityCLI",
       targets: ["SwiftComplexityCLI"]
     ),
+    .executable(
+      name: "SwiftComplexityMCP",
+      targets: ["SwiftComplexityMCP"]
+    ),
     .plugin(
       name: "SwiftComplexityPlugin",
       targets: ["SwiftComplexityPlugin"]
@@ -28,6 +32,8 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
     // IndexStore-DB integration (for LCOM4 semantic analysis)
     .package(url: "https://github.com/swiftlang/indexstore-db", branch: "main"),
+    // MCP (Model Context Protocol) server SDK
+    .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.11.0"),
   ],
   targets: [
     .target(
@@ -68,12 +74,28 @@ let package = Package(
       ],
       path: "Tests/SwiftComplexityCLITests",
     ),
+    .executableTarget(
+      name: "SwiftComplexityMCP",
+      dependencies: [
+        "SwiftComplexityCore",
+        .product(name: "MCP", package: "swift-sdk"),
+      ],
+      path: "Sources/SwiftComplexityMCP"
+    ),
     .plugin(
       name: "SwiftComplexityPlugin",
       capability: .buildTool(),
       dependencies: [
         "SwiftComplexityCLI"
       ]
+    ),
+    .testTarget(
+      name: "SwiftComplexityMCPTests",
+      dependencies: [
+        "SwiftComplexityMCP",
+        "SwiftComplexityCore",
+      ],
+      path: "Tests/SwiftComplexityMCPTests"
     ),
   ]
 )

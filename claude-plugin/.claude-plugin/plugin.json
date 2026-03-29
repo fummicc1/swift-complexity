@@ -1,0 +1,10 @@
+{
+  "name": "swift-complexity",
+  "description": "Analyze Swift code complexity (cyclomatic, cognitive, LCOM4) via MCP tools and skills",
+  "version": "1.0.0",
+  "author": {
+    "name": "fumiyatanaka"
+  },
+  "repository": "https://github.com/fummicc1/swift-complexity",
+  "license": "MIT"
+}

@@ -15,6 +15,8 @@ A command-line tool to analyze Swift code complexity and quality metrics using s
 - **Flexible Analysis**: Single files, directories, or recursive directory analysis
 - **Swift Syntax Based**: Uses `swift-syntax` for accurate Swift code parsing
 - **Cross-Platform Support**: CLI works on macOS and Linux, library works on iOS 13+.
+- **MCP Server**: Expose complexity analysis as tools for LLM agents (Claude Code, etc.) via Model Context Protocol
+- **Claude Plugin**: Ready-to-use Claude Code plugin with MCP server and analysis skill
 - **Extensible Architecture**: Designed to support additional quality metrics in the future
 
 ## Quick Start
@@ -99,6 +101,7 @@ Unified package with multiple components:
 
 - **SwiftComplexityCore**: Core analysis library (supports macOS 14+, iOS 13+)
 - **SwiftComplexityCLI**: Command-line interface
+- **SwiftComplexityMCP**: MCP server for LLM agent integration
 - **SwiftComplexityPlugin**: Xcode Build Tool Plugin
 
 ### Debug Website
@@ -123,6 +126,72 @@ swift run SwiftComplexityCLI Sources --cognitive-only --threshold 5
 swift build  # Generate index first
 swift run SwiftComplexityCLI Sources --lcom4 --index-store-path .build/debug/index/store --format json
 ```
+
+## MCP Server
+
+The MCP (Model Context Protocol) server exposes complexity analysis as tools for LLM agents like Claude Code.
+
+### Installation
+
+```bash
+# Install via Mint
+mint install fummicc1/swift-complexity --product SwiftComplexityMCP
+```
+
+### MCP Tools
+
+| Tool | Description |
+|---|---|
+| `analyze_complexity` | Analyze Swift files/directories on disk (recursive, threshold, LCOM4 support) |
+| `analyze_code_string` | Analyze a Swift code string directly without files on disk |
+
+### Configuration
+
+**Claude Code (`settings.json`):**
+
+```json
+{
+  "mcpServers": {
+    "swift-complexity": {
+      "command": "SwiftComplexityMCP"
+    }
+  }
+}
+```
+
+**Claude Desktop (`claude_desktop_config.json`):**
+
+```json
+{
+  "mcpServers": {
+    "swift-complexity": {
+      "command": "SwiftComplexityMCP"
+    }
+  }
+}
+```
+
+## Claude Plugin
+
+A ready-to-use Claude Code plugin is available in `claude-plugin/`.
+
+**Prerequisite:** The plugin requires `SwiftComplexityMCP` binary in your PATH. Install via Mint first:
+
+```bash
+mint install fummicc1/swift-complexity --product SwiftComplexityMCP
+```
+
+Then load the plugin:
+
+```bash
+# Load the plugin
+claude --plugin-dir ./claude-plugin
+
+# Use the skill
+/swift-complexity:analyze-complexity
+```
+
+The plugin bundles the MCP server configuration and an `analyze-complexity` skill that guides Claude through complexity analysis workflows.
 
 ## Xcode Build Tool Plugin
 

@@ -143,6 +143,10 @@ jobs:
               --configuration release \
               --arch ${{ matrix.arch }} \
               --product SwiftComplexityCLI
+            swift build \
+              --configuration release \
+              --arch ${{ matrix.arch }} \
+              --product SwiftComplexityMCP
           else
             # Linux: Get toolchain path for libdispatch headers
             SWIFTLY_HOME="${HOME}/.local/share/swiftly"
@@ -152,48 +156,60 @@ jobs:
               --product SwiftComplexityCLI \
               -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
               -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
+            swift build \
+              --configuration release \
+              --product SwiftComplexityMCP \
+              -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
+              -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
           fi
 
       - name: Create archive
         run: |
-          PRODUCT_NAME="SwiftComplexityCLI"
           VERSION="${{ needs.validate.outputs.version }}"
           ARCH="${{ matrix.arch }}"
           PLATFORM="${{ matrix.platform }}"
-          ARCHIVE_NAME="${PRODUCT_NAME}-${VERSION}-${PLATFORM}-${ARCH}"
 
-          mkdir -p "artifacts/${ARCHIVE_NAME}"
-
-          # Copy binary
-          cp ".build/release/${PRODUCT_NAME}" "artifacts/${ARCHIVE_NAME}/"
-
-          # Copy documentation
-          cp README.md "artifacts/${ARCHIVE_NAME}/"
-          cp -r docs "artifacts/${ARCHIVE_NAME}/"
-
-          # Create install script
-          cat > "artifacts/${ARCHIVE_NAME}/install.sh" << 'EOF'
+          # Archive SwiftComplexityCLI
+          CLI_ARCHIVE="SwiftComplexityCLI-${VERSION}-${PLATFORM}-${ARCH}"
+          mkdir -p "artifacts/${CLI_ARCHIVE}"
+          cp ".build/release/SwiftComplexityCLI" "artifacts/${CLI_ARCHIVE}/"
+          cp README.md "artifacts/${CLI_ARCHIVE}/"
+          cp -r docs "artifacts/${CLI_ARCHIVE}/"
+          cat > "artifacts/${CLI_ARCHIVE}/install.sh" << 'EOF'
           #!/bin/bash
           set -e
-
           INSTALL_DIR="${HOME}/.local/bin"
           mkdir -p "$INSTALL_DIR"
-
           cp SwiftComplexityCLI "$INSTALL_DIR/"
           chmod +x "$INSTALL_DIR/SwiftComplexityCLI"
-
           echo "SwiftComplexityCLI installed to $INSTALL_DIR"
           echo "Make sure $INSTALL_DIR is in your PATH"
           EOF
+          chmod +x "artifacts/${CLI_ARCHIVE}/install.sh"
 
-          chmod +x "artifacts/${ARCHIVE_NAME}/install.sh"
+          # Archive SwiftComplexityMCP
+          MCP_ARCHIVE="SwiftComplexityMCP-${VERSION}-${PLATFORM}-${ARCH}"
+          mkdir -p "artifacts/${MCP_ARCHIVE}"
+          cp ".build/release/SwiftComplexityMCP" "artifacts/${MCP_ARCHIVE}/"
+          cp README.md "artifacts/${MCP_ARCHIVE}/"
+          cat > "artifacts/${MCP_ARCHIVE}/install.sh" << 'EOF'
+          #!/bin/bash
+          set -e
+          INSTALL_DIR="${HOME}/.local/bin"
+          mkdir -p "$INSTALL_DIR"
+          cp SwiftComplexityMCP "$INSTALL_DIR/"
+          chmod +x "$INSTALL_DIR/SwiftComplexityMCP"
+          echo "SwiftComplexityMCP installed to $INSTALL_DIR"
+          echo "Make sure $INSTALL_DIR is in your PATH"
+          EOF
+          chmod +x "artifacts/${MCP_ARCHIVE}/install.sh"
 
-          # Create tarball
+          # Create tarballs and checksums
           cd artifacts
-          tar -czf "${ARCHIVE_NAME}.tar.gz" "${ARCHIVE_NAME}"
-
-          # Generate checksums
-          shasum -a 256 "${ARCHIVE_NAME}.tar.gz" > "${ARCHIVE_NAME}.tar.gz.sha256"
+          for dir in "${CLI_ARCHIVE}" "${MCP_ARCHIVE}"; do
+            tar -czf "${dir}.tar.gz" "${dir}"
+            shasum -a 256 "${dir}.tar.gz" > "${dir}.tar.gz.sha256"
+          done
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -229,7 +245,7 @@ jobs:
           cat > release_body.md << EOF
           ## Installation
 
-          ### Download Pre-built Binary
+          ### CLI Tool (SwiftComplexityCLI)
 
           Download the appropriate binary for your platform:
           - **macOS Apple Silicon (M1/M2/M3)**: \`SwiftComplexityCLI-${VERSION}-macos-arm64.tar.gz\`
@@ -239,6 +255,19 @@ jobs:
           \`\`\`bash
           tar -xzf SwiftComplexityCLI-\${VERSION}-*.tar.gz
           cd SwiftComplexityCLI-\${VERSION}-*
+          ./install.sh
+          \`\`\`
+
+          ### MCP Server (SwiftComplexityMCP)
+
+          Download the MCP server for LLM agent integration:
+          - **macOS Apple Silicon (M1/M2/M3)**: \`SwiftComplexityMCP-${VERSION}-macos-arm64.tar.gz\`
+          - **macOS Intel**: \`SwiftComplexityMCP-${VERSION}-macos-x86_64.tar.gz\`
+          - **Linux x86_64**: \`SwiftComplexityMCP-${VERSION}-linux-x86_64.tar.gz\`
+
+          \`\`\`bash
+          tar -xzf SwiftComplexityMCP-\${VERSION}-*.tar.gz
+          cd SwiftComplexityMCP-\${VERSION}-*
           ./install.sh
           \`\`\`
 
@@ -255,6 +284,7 @@ jobs:
 
           \`\`\`bash
           shasum -a 256 -c SwiftComplexityCLI-\${VERSION}-*.tar.gz.sha256
+          shasum -a 256 -c SwiftComplexityMCP-\${VERSION}-*.tar.gz.sha256
           \`\`\`
           EOF
 
