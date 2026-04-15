@@ -237,6 +237,64 @@ jobs:
           merge-multiple: true
           path: ./artifacts
 
+      - name: Assemble artifact bundles
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+
+          # Helper function to assemble an artifact bundle
+          assemble_bundle() {
+            local PRODUCT="$1"       # e.g. SwiftComplexityCLI
+            local ARTIFACT_NAME="$2" # e.g. swift-complexity
+            local BUNDLE_DIR="artifacts/${ARTIFACT_NAME}.artifactbundle"
+
+            for VARIANT in macos-arm64 macos-x86_64 linux-x86_64; do
+              mkdir -p "${BUNDLE_DIR}/${ARTIFACT_NAME}-${VERSION}-${VARIANT}/bin"
+              tar -xzf "artifacts/${PRODUCT}-${VERSION}-${VARIANT}.tar.gz" -C /tmp
+              cp "/tmp/${PRODUCT}-${VERSION}-${VARIANT}/${PRODUCT}" \
+                 "${BUNDLE_DIR}/${ARTIFACT_NAME}-${VERSION}-${VARIANT}/bin/${ARTIFACT_NAME}"
+            done
+
+            # Generate info.json
+            jq -n \
+              --arg name "$ARTIFACT_NAME" \
+              --arg version "$VERSION" \
+              '{
+                schemaVersion: "1.0",
+                artifacts: {
+                  ($name): {
+                    version: $version,
+                    type: "executable",
+                    variants: [
+                      {
+                        path: "\($name)-\($version)-macos-arm64/bin/\($name)",
+                        supportedTriples: ["arm64-apple-macosx"]
+                      },
+                      {
+                        path: "\($name)-\($version)-macos-x86_64/bin/\($name)",
+                        supportedTriples: ["x86_64-apple-macosx"]
+                      },
+                      {
+                        path: "\($name)-\($version)-linux-x86_64/bin/\($name)",
+                        supportedTriples: ["x86_64-unknown-linux-gnu"]
+                      }
+                    ]
+                  }
+                }
+              }' > "${BUNDLE_DIR}/info.json"
+
+            # Zip and checksum
+            cd artifacts
+            zip -r "${ARTIFACT_NAME}.artifactbundle.zip" "${ARTIFACT_NAME}.artifactbundle"
+            shasum -a 256 "${ARTIFACT_NAME}.artifactbundle.zip" > "${ARTIFACT_NAME}.artifactbundle.zip.sha256"
+            cd ..
+          }
+
+          assemble_bundle "SwiftComplexityCLI" "swift-complexity"
+          assemble_bundle "SwiftComplexityMCP" "swift-complexity-mcp"
+
+          echo "Artifact bundles created:"
+          ls -la artifacts/*.artifactbundle.zip*
+
       - name: Generate release body
         id: release_body
         run: |
@@ -271,6 +329,16 @@ jobs:
           ./install.sh
           \`\`\`
 
+          ### Artifact Bundle ([nest](https://github.com/mtj0928/nest))
+
+          \`\`\`bash
+          nest install fummicc1/swift-complexity
+          \`\`\`
+
+          Or download the artifact bundle directly:
+          - **SwiftComplexityCLI**: \`swift-complexity.artifactbundle.zip\`
+          - **SwiftComplexityMCP**: \`swift-complexity-mcp.artifactbundle.zip\`
+
           ### Build from Source
 
           \`\`\`bash
@@ -285,6 +353,8 @@ jobs:
           \`\`\`bash
           shasum -a 256 -c SwiftComplexityCLI-\${VERSION}-*.tar.gz.sha256
           shasum -a 256 -c SwiftComplexityMCP-\${VERSION}-*.tar.gz.sha256
+          shasum -a 256 -c swift-complexity.artifactbundle.zip.sha256
+          shasum -a 256 -c swift-complexity-mcp.artifactbundle.zip.sha256
           \`\`\`
           EOF
 
@@ -302,6 +372,7 @@ jobs:
           files: |
             artifacts/*.tar.gz
             artifacts/*.sha256
+            artifacts/*.artifactbundle.zip
           generate_release_notes: true
 
   notify:
