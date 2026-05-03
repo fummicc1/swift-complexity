@@ -5,7 +5,7 @@ A command-line tool to analyze Swift code complexity and quality metrics using s
 ## Features
 
 - **Multiple Complexity Metrics**: Supports cyclomatic complexity, cognitive complexity, and LCOM4 cohesion analysis
-- **LCOM4 Class Cohesion**: High-precision (90-95%) class cohesion measurement using IndexStore-DB semantic analysis
+- **LCOM4 Class Cohesion**: High-precision class cohesion measurement using IndexStore-DB semantic analysis
 - **Web-based Debug Interface**: Interactive browser-based complexity analyzer ([Try it online](https://swift-complexity.fummicc1.dev))
 - **Xcode Integration**: Seamless integration with Xcode via Build Tool Plugin for complexity feedback during build phase
 - **Xcode Diagnostics**: Display complexity warnings and errors directly in Xcode editor with accurate line numbers
@@ -34,6 +34,8 @@ git clone https://github.com/fummicc1/swift-complexity
 cd swift-complexity
 swift build -c release
 ```
+
+Pre-built binaries are also available from [GitHub Releases](https://github.com/fummicc1/swift-complexity/releases) as Swift Artifact Bundles, or via `nest install fummicc1/swift-complexity`.
 
 ### Basic Usage
 
@@ -81,7 +83,7 @@ swift run SwiftComplexityCLI Sources --threshold 15 --recursive
 
 - **LCOM4 (Lack of Cohesion of Methods)**: Measures class cohesion by analyzing method-property relationships
   - **Connected Components**: Counts independent groups of related methods
-  - **High Precision**: 90-95% accuracy using IndexStore-DB semantic analysis
+  - **High Precision**: Semantic analysis powered by IndexStore-DB
   - **Implicit self Detection**: Automatically detects both `self.property` and `property` accesses
   - **Requirements**: Requires `swift build` to generate index data
 
@@ -134,8 +136,11 @@ The MCP (Model Context Protocol) server exposes complexity analysis as tools for
 ### Installation
 
 ```bash
-# Install via Mint
-mint install fummicc1/swift-complexity --product SwiftComplexityMCP
+# Install MCP server only
+mint install fummicc1/swift-complexity SwiftComplexityMCP
+
+# Or install both CLI and MCP server at once
+mint install fummicc1/swift-complexity
 ```
 
 ### MCP Tools
@@ -178,7 +183,7 @@ A ready-to-use Claude Code plugin is available in `claude-plugin/`.
 **Prerequisite:** The plugin requires `SwiftComplexityMCP` binary in your PATH. Install via Mint first:
 
 ```bash
-mint install fummicc1/swift-complexity --product SwiftComplexityMCP
+mint install fummicc1/swift-complexity SwiftComplexityMCP
 ```
 
 Then load the plugin:
@@ -261,12 +266,12 @@ File: Sources/ComplexityAnalyzer.swift
 Total: 2 functions, Average Cyclomatic: 4.0, Average Cognitive: 4.5
 
 Class Cohesion (LCOM4):
-+------------------+----------+----------+----------+----------+
-| Class/Struct     | LCOM4    | Methods  | Props    | Level    |
-+------------------+----------+----------+----------+----------+
-| ComplexityAnalyzer|    1     |    5     |    3     | High     |
-| FileProcessor    |    2     |    8     |    4     | Moderate |
-+------------------+----------+----------+----------+----------+
++--------------------+----------+----------+----------+----------+
+| Class/Struct       | LCOM4    | Methods  | Props    | Level    |
++--------------------+----------+----------+----------+----------+
+| ComplexityAnalyzer |    1     |    5     |    3     | High     |
+| FileProcessor      |    2     |    8     |    4     | Moderate |
++--------------------+----------+----------+----------+----------+
 ```
 
 ### Xcode Diagnostics Output
