@@ -29,6 +29,14 @@ Visit [swift-complexity.fummicc1.dev](https://swift-complexity.fummicc1.dev) to 
 
 ### Installation
 
+On macOS the recommended path is [Homebrew](https://brew.sh):
+
+```bash
+brew install fummicc1/tap/swift-complexity
+```
+
+Or build from source:
+
 ```bash
 git clone https://github.com/fummicc1/swift-complexity
 cd swift-complexity
@@ -136,10 +144,13 @@ The MCP (Model Context Protocol) server exposes complexity analysis as tools for
 ### Installation
 
 ```bash
-# Install MCP server only
+# Homebrew (macOS, recommended)
+brew install fummicc1/tap/swift-complexity-mcp
+
+# Mint: MCP server only
 mint install fummicc1/swift-complexity SwiftComplexityMCP
 
-# Or install both CLI and MCP server at once
+# Mint: both CLI and MCP server at once
 mint install fummicc1/swift-complexity
 ```
 

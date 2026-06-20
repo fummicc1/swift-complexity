@@ -375,6 +375,63 @@ jobs:
             artifacts/*.artifactbundle.zip
           generate_release_notes: true
 
+  update-homebrew-tap:
+    name: Update Homebrew Tap
+    runs-on: ubuntu-latest
+    needs: [validate, create-release]
+    # Prereleases must not bump the user-facing tap formula.
+    if: needs.validate.outputs.is_prerelease == 'false'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Generate tap token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.HOMEBREW_TAP_APP_ID }}
+          private-key: ${{ secrets.HOMEBREW_TAP_APP_PRIVATE_KEY }}
+          owner: fummicc1
+          repositories: homebrew-tap
+
+      - name: Resolve bot user id
+        id: bot
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BOT_NAME: ${{ steps.app-token.outputs.app-slug }}[bot]
+        run: |
+          BOT_ID=$(gh api "/users/${BOT_NAME}" --jq .id)
+          echo "name=${BOT_NAME}" >> "$GITHUB_OUTPUT"
+          echo "email=${BOT_ID}+${BOT_NAME}@users.noreply.github.com" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tap
+        uses: actions/checkout@v5
+        with:
+          repository: fummicc1/homebrew-tap
+          token: ${{ steps.app-token.outputs.token }}
+          path: homebrew-tap
+
+      - name: Patch formulae
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          python3 .github/scripts/update_formula.py "$VERSION" homebrew-tap/Formula/swift-complexity.rb
+          python3 .github/scripts/update_formula.py "$VERSION" homebrew-tap/Formula/swift-complexity-mcp.rb
+
+      - name: Commit and push
+        working-directory: homebrew-tap
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          GIT_AUTHOR_NAME: ${{ steps.bot.outputs.name }}
+          GIT_AUTHOR_EMAIL: ${{ steps.bot.outputs.email }}
+          GIT_COMMITTER_NAME: ${{ steps.bot.outputs.name }}
+          GIT_COMMITTER_EMAIL: ${{ steps.bot.outputs.email }}
+        run: |
+          git add Formula
+          git diff --staged --quiet || git commit -m "swift-complexity ${VERSION}"
+          git push
+
   notify:
     name: Notify Release
     runs-on: ubuntu-latest
