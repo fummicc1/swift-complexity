@@ -375,6 +375,51 @@ jobs:
             artifacts/*.artifactbundle.zip
           generate_release_notes: true
 
+  update-homebrew-tap:
+    name: Update Homebrew Tap
+    runs-on: ubuntu-latest
+    needs: [validate, create-release]
+    # Prereleases must not bump the user-facing tap formula.
+    if: needs.validate.outputs.is_prerelease == 'false'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Generate tap token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.HOMEBREW_TAP_APP_ID }}
+          private-key: ${{ secrets.HOMEBREW_TAP_APP_PRIVATE_KEY }}
+          owner: fummicc1
+          repositories: homebrew-tap
+
+      - name: Checkout tap
+        uses: actions/checkout@v5
+        with:
+          repository: fummicc1/homebrew-tap
+          token: ${{ steps.app-token.outputs.token }}
+          path: homebrew-tap
+
+      - name: Patch formulae
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          python3 .github/scripts/update_formula.py "$VERSION" homebrew-tap/Formula/swift-complexity.rb
+          python3 .github/scripts/update_formula.py "$VERSION" homebrew-tap/Formula/swift-complexity-mcp.rb
+
+      - name: Commit and push
+        working-directory: homebrew-tap
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula
+          git diff --staged --quiet || git commit -m "swift-complexity ${VERSION}"
+          git push
+
   notify:
     name: Notify Release
     runs-on: ubuntu-latest
