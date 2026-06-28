@@ -53,7 +53,8 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
                 signature: function.signature,
                 cyclomaticComplexity: cyclomaticComplexity,
                 cognitiveComplexity: cognitiveComplexity,
-                location: function.location
+                location: function.location,
+                enclosingTypeName: function.enclosingTypeName
             )
 
             functionComplexities.append(functionComplexity)

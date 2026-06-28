@@ -1,3 +1,4 @@
+import Foundation
 import MCP
 import SwiftComplexityCore
 import Testing
@@ -320,6 +321,87 @@ struct ThresholdFilteringTests {
         #expect(output.contains("complex"))
         // Cohesion data must be preserved regardless of threshold
         #expect(output.contains("TestClass"))
+    }
+}
+
+// MARK: - Per-Type Threshold (config_path) Tests
+
+@Suite("AnalyzeComplexityHandler config_path")
+struct AnalyzeComplexityConfigPathTests {
+    private func textContent(_ result: CallTool.Result) -> String? {
+        result.content.first.flatMap {
+            if case .text(let t) = $0 { return t }
+            return nil
+        }
+    }
+
+    /// Writes `contents` to a uniquely named temp file with `ext` and returns its path.
+    private func writeTemp(_ contents: String, ext: String) throws -> String {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swift-complexity-mcp-\(UUID().uuidString).\(ext)")
+        try contents.write(to: url, atomically: true, encoding: .utf8)
+        return url.path
+    }
+
+    @Test("config_path applies per-type thresholds while filtering")
+    func configPathFilters() async throws {
+        // UserRepository.fetch and BillingService.process both have cyclomatic complexity 3.
+        let swiftSource = """
+            class UserRepository {
+                func fetch(_ x: Int) -> Int {
+                    if x > 0 { return 1 }
+                    if x < 0 { return -1 }
+                    return 0
+                }
+            }
+            class BillingService {
+                func process(_ x: Int) -> Int {
+                    if x > 0 { return 1 }
+                    if x < 0 { return -1 }
+                    return 0
+                }
+            }
+            """
+        // Repository threshold 3 → flagged; Service threshold 100 → not flagged.
+        let yaml = """
+            rules:
+              - suffix: Repository
+                threshold: 3
+              - suffix: Service
+                threshold: 100
+            """
+        let swiftPath = try writeTemp(swiftSource, ext: "swift")
+        let configPath = try writeTemp(yaml, ext: "yml")
+        defer {
+            try? FileManager.default.removeItem(atPath: swiftPath)
+            try? FileManager.default.removeItem(atPath: configPath)
+        }
+
+        let args: [String: Value] = [
+            "paths": .array([.string(swiftPath)]),
+            "config_path": .string(configPath),
+        ]
+        let result = await AnalyzeComplexityHandler.handle(args)
+
+        #expect(result.isError != true)
+        let text = textContent(result)
+        #expect(text?.contains("fetch") == true)
+        #expect(text?.contains("UserRepository") == true)
+        // process() is under the lenient Service threshold (100) and must be filtered out.
+        #expect(text?.contains("process") == false)
+    }
+
+    @Test("Invalid config_path returns an error")
+    func invalidConfigPath() async throws {
+        let swiftPath = try writeTemp("func foo() {}", ext: "swift")
+        defer { try? FileManager.default.removeItem(atPath: swiftPath) }
+
+        let args: [String: Value] = [
+            "paths": .array([.string(swiftPath)]),
+            "config_path": .string("/nonexistent/rules.yml"),
+        ]
+        let result = await AnalyzeComplexityHandler.handle(args)
+        #expect(result.isError == true)
     }
 }
 

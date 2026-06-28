@@ -5,17 +5,22 @@ public struct OutputOptions {
     public let showCognitiveOnly: Bool
     public let showLCOM4: Bool
     public let threshold: Int?
+    /// Per-type threshold configuration. When set, Xcode diagnostics resolve a
+    /// per-function threshold from the function's enclosing type.
+    public let thresholdConfiguration: ThresholdConfiguration?
 
     public init(
         showCyclomaticOnly: Bool = false,
         showCognitiveOnly: Bool = false,
         showLCOM4: Bool = false,
-        threshold: Int? = nil
+        threshold: Int? = nil,
+        thresholdConfiguration: ThresholdConfiguration? = nil
     ) {
         self.showCyclomaticOnly = showCyclomaticOnly
         self.showCognitiveOnly = showCognitiveOnly
         self.showLCOM4 = showLCOM4
         self.threshold = threshold
+        self.thresholdConfiguration = thresholdConfiguration
     }
 }
 
@@ -210,6 +215,9 @@ public class OutputFormatter {
                 for function in result.functions {
                     xml += "    <function name=\"\(xmlEscape(function.name))\" "
                     xml += "signature=\"\(xmlEscape(function.signature))\" "
+                    if let enclosingTypeName = function.enclosingTypeName {
+                        xml += "enclosing-type=\"\(xmlEscape(enclosingTypeName))\" "
+                    }
                     xml += "line=\"\(function.location.line)\" "
                     xml += "column=\"\(function.location.column)\">\n"
                     xml +=
@@ -281,11 +289,19 @@ public class OutputFormatter {
     private func formatAsXcodeDiagnostics(results: [ComplexityResult], options: OutputOptions)
         -> String
     {
-        let threshold = options.threshold ?? 10
+        let configuration = options.thresholdConfiguration
 
         let complexityDiagnostics = results.flatMap { result in
-            result.functions.compactMap { function in
-                createComplexityDiagnostic(for: function, in: result.filePath, threshold: threshold)
+            result.functions.compactMap { function -> String? in
+                // Resolve a per-function threshold from the enclosing type, falling
+                // back to --threshold and finally the Xcode default of 10.
+                let resolved =
+                    configuration?.threshold(
+                        forTypeName: function.enclosingTypeName, fallback: options.threshold)
+                    ?? options.threshold
+                let threshold = resolved ?? 10
+                return createComplexityDiagnostic(
+                    for: function, in: result.filePath, threshold: threshold)
             }
         }
 

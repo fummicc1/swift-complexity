@@ -34,7 +34,14 @@ enum ToolDefinitions {
                 "threshold": .object([
                     "type": .string("integer"),
                     "description": .string(
-                        "Complexity threshold — only return functions at or above this value"),
+                        "Complexity threshold — only return functions at or above this value. Used as the fallback for types that match no rule in config_path."
+                    ),
+                ]),
+                "config_path": .object([
+                    "type": .string("string"),
+                    "description": .string(
+                        "Path to a per-type threshold config file (YAML, e.g. .swift-complexity.yml). Resolves a per-function threshold from the enclosing type name; the strictest matching rule wins."
+                    ),
                 ]),
                 "format": .object([
                     "type": .string("string"),

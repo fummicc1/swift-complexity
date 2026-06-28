@@ -17,18 +17,27 @@ public struct FunctionComplexity: Codable, Hashable, Sendable {
     /// Location in source code
     public let location: SourceLocation
 
+    /// Name of the nearest enclosing nominal type (class/struct/enum/actor) or the
+    /// extended type for extensions. `nil` for free (top-level) functions.
+    ///
+    /// Used to resolve per-type complexity thresholds. Optional for backward
+    /// compatibility with previously encoded results.
+    public let enclosingTypeName: String?
+
     public init(
         name: String,
         signature: String,
         cyclomaticComplexity: Int,
         cognitiveComplexity: Int,
-        location: SourceLocation
+        location: SourceLocation,
+        enclosingTypeName: String? = nil
     ) {
         self.name = name
         self.signature = signature
         self.cyclomaticComplexity = cyclomaticComplexity
         self.cognitiveComplexity = cognitiveComplexity
         self.location = location
+        self.enclosingTypeName = enclosingTypeName
     }
 }
 
