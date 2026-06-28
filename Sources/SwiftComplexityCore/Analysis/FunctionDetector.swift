@@ -6,12 +6,21 @@ struct DetectedFunction {
     let signature: String
     let body: CodeBlockSyntax?
     let location: SourceLocation
+    /// Nearest enclosing nominal type name (or extended type for extensions); nil for free functions.
+    let enclosingTypeName: String?
 
-    init(name: String, signature: String, body: CodeBlockSyntax?, location: SourceLocation) {
+    init(
+        name: String,
+        signature: String,
+        body: CodeBlockSyntax?,
+        location: SourceLocation,
+        enclosingTypeName: String? = nil
+    ) {
         self.name = name
         self.signature = signature
         self.body = body
         self.location = location
+        self.enclosingTypeName = enclosingTypeName
     }
 }
 
@@ -39,7 +48,8 @@ class FunctionDetector: SyntaxVisitor {
             name: name,
             signature: signature,
             body: node.body,
-            location: location
+            location: location,
+            enclosingTypeName: enclosingTypeName(of: node)
         )
 
         detectedFunctions.append(detectedFunction)
@@ -56,7 +66,8 @@ class FunctionDetector: SyntaxVisitor {
             name: name,
             signature: signature,
             body: node.body,
-            location: location
+            location: location,
+            enclosingTypeName: enclosingTypeName(of: node)
         )
 
         detectedFunctions.append(detectedFunction)
@@ -73,7 +84,8 @@ class FunctionDetector: SyntaxVisitor {
             name: name,
             signature: signature,
             body: node.body,
-            location: location
+            location: location,
+            enclosingTypeName: enclosingTypeName(of: node)
         )
 
         detectedFunctions.append(detectedFunction)
@@ -116,7 +128,8 @@ class FunctionDetector: SyntaxVisitor {
             name: name,
             signature: signature,
             body: node.body,
-            location: location
+            location: location,
+            enclosingTypeName: enclosingTypeName(of: node)
         )
 
         detectedFunctions.append(detectedFunction)
@@ -206,10 +219,39 @@ class FunctionDetector: SyntaxVisitor {
             name: propertyName,
             signature: signature,
             body: codeBlock,
-            location: location
+            location: location,
+            enclosingTypeName: enclosingTypeName(of: variable)
         )
 
         detectedFunctions.append(detectedFunction)
+    }
+
+    /// Walks up the parent chain to find the nearest enclosing nominal type name.
+    ///
+    /// Returns the type name for class/struct/enum/actor, the extended type for
+    /// extensions, or `nil` for free (top-level) functions. For nested types, the
+    /// nearest (innermost) enclosing type wins.
+    private func enclosingTypeName(of node: some SyntaxProtocol) -> String? {
+        var current = node.parent
+        while let parent = current {
+            if let decl = parent.as(ClassDeclSyntax.self) {
+                return decl.name.text
+            }
+            if let decl = parent.as(StructDeclSyntax.self) {
+                return decl.name.text
+            }
+            if let decl = parent.as(EnumDeclSyntax.self) {
+                return decl.name.text
+            }
+            if let decl = parent.as(ActorDeclSyntax.self) {
+                return decl.name.text
+            }
+            if let decl = parent.as(ExtensionDeclSyntax.self) {
+                return decl.extendedType.trimmedDescription
+            }
+            current = parent.parent
+        }
+        return nil
     }
 
     private func findParentPropertyName(from node: AccessorDeclSyntax) -> String? {

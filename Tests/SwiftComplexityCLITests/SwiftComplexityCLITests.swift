@@ -151,3 +151,31 @@ struct CLIValidationTests {
         }
     }
 }
+
+// MARK: - Config Option Tests
+
+@Suite("CLI Config Option", .tags(.cli))
+struct CLIConfigOptionTests {
+
+    @Test("--config option is parsed")
+    func configOptionParsed() throws {
+        let command = try ComplexityCommand.parse(["Sources", "--config", "rules.yml"])
+        #expect(command.config == "rules.yml")
+        #expect(command.paths == ["Sources"])
+    }
+
+    @Test("--config defaults to nil when absent")
+    func configDefaultsToNil() throws {
+        let command = try ComplexityCommand.parse(["Sources"])
+        #expect(command.config == nil)
+    }
+
+    @Test("--config and --threshold can be combined")
+    func configWithThreshold() throws {
+        let command = try ComplexityCommand.parse([
+            "Sources", "--config", "rules.yml", "--threshold", "10",
+        ])
+        #expect(command.config == "rules.yml")
+        #expect(command.threshold == 10)
+    }
+}

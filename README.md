@@ -10,6 +10,7 @@ A command-line tool to analyze Swift code complexity and quality metrics using s
 - **Xcode Integration**: Seamless integration with Xcode via Build Tool Plugin for complexity feedback during build phase
 - **Xcode Diagnostics**: Display complexity warnings and errors directly in Xcode editor with accurate line numbers
 - **Configurable Thresholds**: Set custom complexity thresholds via Xcode Build Settings or environment variables
+- **Per-Type Thresholds**: Assign different thresholds to types by name (prefix/suffix) via a `.swift-complexity.yml` config — e.g. stricter limits for `*Repository`, looser for `*UseCase`
 - **Exit Code Integration**: Returns exit code 1 when complexity thresholds are exceeded, perfect for CI/CD pipelines
 - **Multiple Output Formats**: Text, JSON, XML, and Xcode diagnostics output for different use cases
 - **Flexible Analysis**: Single files, directories, or recursive directory analysis
@@ -79,6 +80,38 @@ swift run SwiftComplexityCLI Sources --threshold 15 --recursive
 # Exit code 0: All functions below threshold
 # Exit code 1: One or more functions exceed threshold
 ```
+
+### Per-Type Thresholds
+
+Assign different thresholds per nominal type (class/struct/enum/actor and extensions)
+so each layer or feature gets its own complexity budget. Create a
+`.swift-complexity.yml` (auto-discovered in the current directory, or pass `--config <path>`):
+
+```yaml
+# .swift-complexity.yml
+defaultThreshold: 10            # Fallback for types matching no rule (optional)
+rules:
+  - prefix: Toilet              # Feature grouping (type name prefix)
+    threshold: 12
+  - suffix: Repository          # Layer grouping (type name suffix)
+    threshold: 5
+  - suffix: UseCase
+    threshold: 15
+```
+
+A function's threshold is resolved from its enclosing type name: among all matching
+rules the **strictest (lowest)** wins (e.g. `ToiletRepository` matches `Toilet`=12 and
+`Repository`=5 → **5**). Unmatched types fall back to `--threshold` or `defaultThreshold`.
+
+```bash
+# Auto-discovers .swift-complexity.yml
+swift run SwiftComplexityCLI Sources --recursive
+
+# Explicit config path
+swift run SwiftComplexityCLI Sources --recursive --config config/complexity.yml
+```
+
+See the [Usage Guide](docs/user-guide/usage.md#per-type-complexity-thresholds) for full resolution rules.
 
 ## Supported Complexity Metrics
 
@@ -158,7 +191,7 @@ mint install fummicc1/swift-complexity
 
 | Tool | Description |
 |---|---|
-| `analyze_complexity` | Analyze Swift files/directories on disk (recursive, threshold, LCOM4 support) |
+| `analyze_complexity` | Analyze Swift files/directories on disk (recursive, threshold, per-type thresholds via `config_path`, LCOM4 support) |
 | `analyze_code_string` | Analyze a Swift code string directly without files on disk |
 
 ### Configuration

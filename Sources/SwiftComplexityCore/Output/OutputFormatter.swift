@@ -5,17 +5,22 @@ public struct OutputOptions {
     public let showCognitiveOnly: Bool
     public let showLCOM4: Bool
     public let threshold: Int?
+    /// Per-type threshold configuration. When set, Xcode diagnostics resolve a
+    /// per-function threshold from the function's enclosing type.
+    public let thresholdConfiguration: ThresholdConfiguration?
 
     public init(
         showCyclomaticOnly: Bool = false,
         showCognitiveOnly: Bool = false,
         showLCOM4: Bool = false,
-        threshold: Int? = nil
+        threshold: Int? = nil,
+        thresholdConfiguration: ThresholdConfiguration? = nil
     ) {
         self.showCyclomaticOnly = showCyclomaticOnly
         self.showCognitiveOnly = showCognitiveOnly
         self.showLCOM4 = showLCOM4
         self.threshold = threshold
+        self.thresholdConfiguration = thresholdConfiguration
     }
 }
 
@@ -201,68 +206,90 @@ public class OutputFormatter {
     private func formatAsXML(results: [ComplexityResult], options: OutputOptions) -> String {
         var xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
         xml += "<complexity-report>\n"
-
         for result in results {
-            xml += "  <file path=\"\(xmlEscape(result.filePath))\">\n"
+            xml += xmlFileElement(result)
+        }
+        xml += "</complexity-report>\n"
+        return xml
+    }
 
-            // Function complexity
-            if !result.functions.isEmpty {
-                for function in result.functions {
-                    xml += "    <function name=\"\(xmlEscape(function.name))\" "
-                    xml += "signature=\"\(xmlEscape(function.signature))\" "
-                    xml += "line=\"\(function.location.line)\" "
-                    xml += "column=\"\(function.location.column)\">\n"
-                    xml +=
-                        "      <cyclomatic-complexity>\(function.cyclomaticComplexity)</cyclomatic-complexity>\n"
-                    xml +=
-                        "      <cognitive-complexity>\(function.cognitiveComplexity)</cognitive-complexity>\n"
-                    xml += "    </function>\n"
-                }
+    private func xmlFileElement(_ result: ComplexityResult) -> String {
+        var xml = "  <file path=\"\(xmlEscape(result.filePath))\">\n"
 
-                xml += "    <summary>\n"
-                xml += "      <total-functions>\(result.summary.totalFunctions)</total-functions>\n"
-                xml +=
-                    "      <average-cyclomatic-complexity>\(result.summary.averageCyclomaticComplexity)</average-cyclomatic-complexity>\n"
-                xml +=
-                    "      <average-cognitive-complexity>\(result.summary.averageCognitiveComplexity)</average-cognitive-complexity>\n"
-                xml +=
-                    "      <max-cyclomatic-complexity>\(result.summary.maxCyclomaticComplexity)</max-cyclomatic-complexity>\n"
-                xml +=
-                    "      <max-cognitive-complexity>\(result.summary.maxCognitiveComplexity)</max-cognitive-complexity>\n"
-                xml += "    </summary>\n"
+        // Function complexity
+        if !result.functions.isEmpty {
+            for function in result.functions {
+                xml += xmlFunctionElement(function)
             }
-
-            // Class cohesion (LCOM4)
-            if let classCohesions = result.classCohesions {
-                for cohesion in classCohesions {
-                    xml += "    <class name=\"\(xmlEscape(cohesion.name))\" "
-                    xml += "type=\"\(cohesion.type.rawValue)\" "
-                    xml += "line=\"\(cohesion.location.line)\" "
-                    xml += "column=\"\(cohesion.location.column)\">\n"
-                    xml += "      <lcom4>\(cohesion.lcom4)</lcom4>\n"
-                    xml += "      <method-count>\(cohesion.methodCount)</method-count>\n"
-                    xml += "      <property-count>\(cohesion.propertyCount)</property-count>\n"
-                    xml +=
-                        "      <cohesion-level>\(cohesion.cohesionLevel.rawValue)</cohesion-level>\n"
-                    xml += "    </class>\n"
-                }
-
-                if let cohesionSummary = result.cohesionSummary {
-                    xml += "    <cohesion-summary>\n"
-                    xml += "      <total-classes>\(cohesionSummary.totalClasses)</total-classes>\n"
-                    xml +=
-                        "      <average-lcom4>\(cohesionSummary.averageLCOM4)</average-lcom4>\n"
-                    xml += "      <max-lcom4>\(cohesionSummary.maxLCOM4)</max-lcom4>\n"
-                    xml +=
-                        "      <low-cohesion-classes>\(cohesionSummary.classesWithLowCohesion)</low-cohesion-classes>\n"
-                    xml += "    </cohesion-summary>\n"
-                }
-            }
-
-            xml += "  </file>\n"
+            xml += xmlFunctionSummary(result.summary)
         }
 
-        xml += "</complexity-report>\n"
+        // Class cohesion (LCOM4)
+        if let classCohesions = result.classCohesions {
+            for cohesion in classCohesions {
+                xml += xmlClassElement(cohesion)
+            }
+            if let cohesionSummary = result.cohesionSummary {
+                xml += xmlCohesionSummary(cohesionSummary)
+            }
+        }
+
+        xml += "  </file>\n"
+        return xml
+    }
+
+    private func xmlFunctionElement(_ function: FunctionComplexity) -> String {
+        var xml = "    <function name=\"\(xmlEscape(function.name))\" "
+        xml += "signature=\"\(xmlEscape(function.signature))\" "
+        if let enclosingTypeName = function.enclosingTypeName {
+            xml += "enclosing-type=\"\(xmlEscape(enclosingTypeName))\" "
+        }
+        xml += "line=\"\(function.location.line)\" "
+        xml += "column=\"\(function.location.column)\">\n"
+        xml +=
+            "      <cyclomatic-complexity>\(function.cyclomaticComplexity)</cyclomatic-complexity>\n"
+        xml +=
+            "      <cognitive-complexity>\(function.cognitiveComplexity)</cognitive-complexity>\n"
+        xml += "    </function>\n"
+        return xml
+    }
+
+    private func xmlFunctionSummary(_ summary: FileSummary) -> String {
+        var xml = "    <summary>\n"
+        xml += "      <total-functions>\(summary.totalFunctions)</total-functions>\n"
+        xml +=
+            "      <average-cyclomatic-complexity>\(summary.averageCyclomaticComplexity)</average-cyclomatic-complexity>\n"
+        xml +=
+            "      <average-cognitive-complexity>\(summary.averageCognitiveComplexity)</average-cognitive-complexity>\n"
+        xml +=
+            "      <max-cyclomatic-complexity>\(summary.maxCyclomaticComplexity)</max-cyclomatic-complexity>\n"
+        xml +=
+            "      <max-cognitive-complexity>\(summary.maxCognitiveComplexity)</max-cognitive-complexity>\n"
+        xml += "    </summary>\n"
+        return xml
+    }
+
+    private func xmlClassElement(_ cohesion: ClassCohesion) -> String {
+        var xml = "    <class name=\"\(xmlEscape(cohesion.name))\" "
+        xml += "type=\"\(cohesion.type.rawValue)\" "
+        xml += "line=\"\(cohesion.location.line)\" "
+        xml += "column=\"\(cohesion.location.column)\">\n"
+        xml += "      <lcom4>\(cohesion.lcom4)</lcom4>\n"
+        xml += "      <method-count>\(cohesion.methodCount)</method-count>\n"
+        xml += "      <property-count>\(cohesion.propertyCount)</property-count>\n"
+        xml += "      <cohesion-level>\(cohesion.cohesionLevel.rawValue)</cohesion-level>\n"
+        xml += "    </class>\n"
+        return xml
+    }
+
+    private func xmlCohesionSummary(_ summary: CohesionSummary) -> String {
+        var xml = "    <cohesion-summary>\n"
+        xml += "      <total-classes>\(summary.totalClasses)</total-classes>\n"
+        xml += "      <average-lcom4>\(summary.averageLCOM4)</average-lcom4>\n"
+        xml += "      <max-lcom4>\(summary.maxLCOM4)</max-lcom4>\n"
+        xml +=
+            "      <low-cohesion-classes>\(summary.classesWithLowCohesion)</low-cohesion-classes>\n"
+        xml += "    </cohesion-summary>\n"
         return xml
     }
 
@@ -281,11 +308,19 @@ public class OutputFormatter {
     private func formatAsXcodeDiagnostics(results: [ComplexityResult], options: OutputOptions)
         -> String
     {
-        let threshold = options.threshold ?? 10
+        let configuration = options.thresholdConfiguration
 
         let complexityDiagnostics = results.flatMap { result in
-            result.functions.compactMap { function in
-                createComplexityDiagnostic(for: function, in: result.filePath, threshold: threshold)
+            result.functions.compactMap { function -> String? in
+                // Resolve a per-function threshold from the enclosing type, falling
+                // back to --threshold and finally the Xcode default of 10.
+                let resolved =
+                    configuration?.threshold(
+                        forTypeName: function.enclosingTypeName, fallback: options.threshold)
+                    ?? options.threshold
+                let threshold = resolved ?? 10
+                return createComplexityDiagnostic(
+                    for: function, in: result.filePath, threshold: threshold)
             }
         }
 

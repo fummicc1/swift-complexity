@@ -20,6 +20,7 @@ enum AnalyzeComplexityHandler {
         let recursive = ParamExtractor.bool("recursive", from: arguments)
         let exclude = ParamExtractor.stringArray("exclude", from: arguments) ?? []
         let threshold = ParamExtractor.int("threshold", from: arguments)
+        let configPath = ParamExtractor.string("config_path", from: arguments)
         let formatString = ParamExtractor.string("format", from: arguments) ?? "json"
         let cyclomaticOnly = ParamExtractor.bool("cyclomatic_only", from: arguments)
         let cognitiveOnly = ParamExtractor.bool("cognitive_only", from: arguments)
@@ -43,6 +44,19 @@ enum AnalyzeComplexityHandler {
                     .text("Error: 'index_store_path' is required when 'lcom4' is true")
                 ],
                 isError: true)
+        }
+
+        // Load per-type threshold configuration (if provided)
+        let configuration: ThresholdConfiguration
+        if let configPath {
+            do {
+                configuration = try ThresholdConfiguration.load(fromFileAtPath: configPath)
+            } catch {
+                return .init(
+                    content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+        } else {
+            configuration = .empty
         }
 
         let format: OutputFormat = formatString == "text" ? .text : .json
@@ -71,9 +85,10 @@ enum AnalyzeComplexityHandler {
             var results = try await fileProcessor.processFiles(
                 at: paths, options: processingOptions)
 
-            // Apply threshold filtering
-            if let threshold = threshold {
-                results = filterByThreshold(results: results, threshold: threshold)
+            // Apply threshold filtering (per-type config and/or global threshold)
+            if threshold != nil || !configuration.isEmpty {
+                results = filterByThreshold(
+                    results: results, threshold: threshold, configuration: configuration)
             }
 
             // Format output
@@ -81,7 +96,8 @@ enum AnalyzeComplexityHandler {
                 showCyclomaticOnly: cyclomaticOnly,
                 showCognitiveOnly: cognitiveOnly,
                 showLCOM4: lcom4,
-                threshold: threshold
+                threshold: threshold,
+                thresholdConfiguration: configuration
             )
 
             let formatter = OutputFormatter()
@@ -94,13 +110,14 @@ enum AnalyzeComplexityHandler {
         }
     }
 
-    private static func filterByThreshold(results: [ComplexityResult], threshold: Int)
-        -> [ComplexityResult]
-    {
+    private static func filterByThreshold(
+        results: [ComplexityResult],
+        threshold: Int?,
+        configuration: ThresholdConfiguration
+    ) -> [ComplexityResult] {
         results.compactMap { result in
             let filteredFunctions = result.functions.filter { function in
-                function.cyclomaticComplexity >= threshold
-                    || function.cognitiveComplexity >= threshold
+                configuration.isExceeded(function, fallback: threshold)
             }
 
             // Threshold only filters functions; cohesion data is always preserved

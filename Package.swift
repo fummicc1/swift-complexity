@@ -34,6 +34,8 @@ let package = Package(
     .package(url: "https://github.com/swiftlang/indexstore-db", branch: "main"),
     // MCP (Model Context Protocol) server SDK
     .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.11.0"),
+    // YAML parser (for per-type complexity threshold configuration)
+    .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0"),
   ],
   targets: [
     .target(
@@ -43,6 +45,8 @@ let package = Package(
         .product(name: "SwiftParser", package: "swift-syntax"),
         // IndexStore-DB integration (for LCOM4 semantic analysis)
         .product(name: "IndexStoreDB", package: "indexstore-db"),
+        // YAML decoding for per-type threshold configuration
+        .product(name: "Yams", package: "Yams"),
       ],
       path: "Sources/SwiftComplexityCore",
     ),

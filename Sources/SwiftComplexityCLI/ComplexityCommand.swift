@@ -60,6 +60,14 @@ public struct ComplexityCommand: AsyncParsableCommand {
     )
     public var threshold: Int?
 
+    @Option(
+        name: .long,
+        help:
+            "Path to a per-type threshold config file (YAML). Defaults to .swift-complexity.yml in the current directory if present.",
+        completion: .file(extensions: ["yml", "yaml"])
+    )
+    public var config: String?
+
     @Flag(
         name: .long,
         help: "Show only cyclomatic complexity"
@@ -117,7 +125,10 @@ public struct ComplexityCommand: AsyncParsableCommand {
     public func run() async throws {
         try validateFlags()
         try validateLCOM4Options()
-        logVerboseConfiguration()
+
+        let configuration = try loadConfiguration()
+
+        logVerboseConfiguration(configuration: configuration)
 
         do {
             let analyzer = try createAnalyzer()
@@ -132,13 +143,15 @@ public struct ComplexityCommand: AsyncParsableCommand {
             let results = try await fileProcessor.processFiles(
                 at: paths, options: processingOptions)
 
-            let filteredResults = filterByThreshold(results: results, threshold: threshold)
+            let filteredResults = filterByThreshold(
+                results: results, threshold: threshold, configuration: configuration)
 
             let outputOptions = OutputOptions(
                 showCyclomaticOnly: cyclomaticOnly,
                 showCognitiveOnly: cognitiveOnly,
                 showLCOM4: lcom4,
-                threshold: threshold
+                threshold: threshold,
+                thresholdConfiguration: configuration
             )
 
             let formatter = OutputFormatter()
@@ -147,12 +160,17 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
             print(output)
 
-            if let threshold = threshold,
-                hasExceededThreshold(results: results, threshold: threshold)
+            if threshold != nil || !configuration.isEmpty,
+                hasExceededThreshold(
+                    results: results, threshold: threshold, configuration: configuration)
             {
                 throw ExitCode(1)
             }
 
+        } catch let exitCode as ExitCode {
+            // Re-throw threshold/exit signals so ArgumentParser sets the exit code
+            // without wrapping them into an "unexpected error" message.
+            throw exitCode
         } catch let error as FileProcessorError {
             throw CLIError.processingFailed(error.localizedDescription)
         } catch let error as CLIError {
@@ -160,6 +178,20 @@ public struct ComplexityCommand: AsyncParsableCommand {
             throw ExitCode.failure
         } catch {
             throw CLIError.unexpectedError(error.localizedDescription)
+        }
+    }
+
+    /// Loads per-type threshold configuration from `--config` if provided,
+    /// otherwise auto-discovers `.swift-complexity.yml` in the current directory.
+    private func loadConfiguration() throws -> ThresholdConfiguration {
+        do {
+            if let config {
+                return try ThresholdConfiguration.load(fromFileAtPath: config)
+            }
+            return try ThresholdConfiguration.discover() ?? .empty
+        } catch let error as ThresholdConfiguration.LoadError {
+            print("Error: \(error.localizedDescription)")
+            throw ExitCode.failure
         }
     }
 
@@ -193,7 +225,7 @@ public struct ComplexityCommand: AsyncParsableCommand {
     }
 
     /// Logs verbose configuration
-    private func logVerboseConfiguration() {
+    private func logVerboseConfiguration(configuration: ThresholdConfiguration) {
         guard verbose else { return }
 
         print("swift-complexity v\(Self.configuration.version)")
@@ -207,6 +239,12 @@ public struct ComplexityCommand: AsyncParsableCommand {
         }
         if !exclude.isEmpty { print("Exclude patterns: \(exclude.joined(separator: ", "))") }
         if let t = threshold { print("Complexity threshold: \(t)") }
+        if !configuration.isEmpty {
+            if let defaultThreshold = configuration.defaultThreshold {
+                print("Per-type config default threshold: \(defaultThreshold)")
+            }
+            print("Per-type config rules: \(configuration.rules.count)")
+        }
     }
 
     /// Creates a ComplexityAnalyzer instance
@@ -223,15 +261,17 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
     // MARK: - Private Methods
 
-    private func filterByThreshold(results: [ComplexityResult], threshold: Int?)
-        -> [ComplexityResult]
-    {
-        guard let threshold = threshold else { return results }
+    private func filterByThreshold(
+        results: [ComplexityResult],
+        threshold: Int?,
+        configuration: ThresholdConfiguration
+    ) -> [ComplexityResult] {
+        // No filtering when neither a global threshold nor any config rule is set.
+        guard threshold != nil || !configuration.isEmpty else { return results }
 
         return results.compactMap { result in
             let filteredFunctions = result.functions.filter { function in
-                function.cyclomaticComplexity >= threshold
-                    || function.cognitiveComplexity >= threshold
+                configuration.isExceeded(function, fallback: threshold)
             }
 
             // For LCOM4, filter classes with low cohesion (LCOM4 >= 3)
@@ -252,12 +292,14 @@ public struct ComplexityCommand: AsyncParsableCommand {
         }
     }
 
-    private func hasExceededThreshold(results: [ComplexityResult], threshold: Int) -> Bool {
+    private func hasExceededThreshold(
+        results: [ComplexityResult],
+        threshold: Int?,
+        configuration: ThresholdConfiguration
+    ) -> Bool {
         for result in results {
             for function in result.functions {
-                if function.cyclomaticComplexity >= threshold
-                    || function.cognitiveComplexity >= threshold
-                {
+                if configuration.isExceeded(function, fallback: threshold) {
                     return true
                 }
             }
