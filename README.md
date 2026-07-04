@@ -12,7 +12,7 @@ A command-line tool to analyze Swift code complexity and quality metrics using s
 - **Configurable Thresholds**: Set custom complexity thresholds via Xcode Build Settings or environment variables
 - **Per-Type Thresholds**: Assign different thresholds to types by name (prefix/suffix) via a `.swift-complexity.yml` config — e.g. stricter limits for `*Repository`, looser for `*UseCase`
 - **Exit Code Integration**: Returns exit code 1 when complexity thresholds are exceeded, perfect for CI/CD pipelines
-- **Multiple Output Formats**: Text, JSON, XML, and Xcode diagnostics output for different use cases
+- **Multiple Output Formats**: Text, JSON, XML, Xcode diagnostics, and SARIF output for different use cases
 - **Flexible Analysis**: Single files, directories, or recursive directory analysis
 - **Swift Syntax Based**: Uses `swift-syntax` for accurate Swift code parsing
 - **Cross-Platform Support**: CLI works on macOS and Linux, library works on iOS 13+.
@@ -60,6 +60,9 @@ swift run SwiftComplexityCLI Sources --format json --recursive
 
 # Xcode diagnostics format (for IDE integration)
 swift run SwiftComplexityCLI Sources --format xcode --threshold 15
+
+# SARIF format (for GitHub Code Scanning)
+swift run SwiftComplexityCLI Sources --format sarif --threshold 10 --recursive > swift-complexity.sarif
 
 # LCOM4 class cohesion analysis (requires swift build first)
 swift build  # Generate index
@@ -132,7 +135,7 @@ See the [Usage Guide](docs/user-guide/usage.md#per-type-complexity-thresholds) f
 
 - **[User Guide](docs/user-guide/)**: Installation, usage, and examples
 - **[Complexity Metrics](docs/user-guide/complexity-metrics.md)**: Detailed metric explanations and examples
-- **[Output Formats](docs/user-guide/output-formats.md)**: JSON, XML, and text format specifications
+- **[Output Formats](docs/user-guide/output-formats.md)**: Text, JSON, XML, Xcode diagnostics, and SARIF format specifications
 - **[Development Guide](docs/development/DEVELOPMENT.md)**: Setup for contributors
 - **[Debug Website](debug-website/)**: Web-based interactive analyzer documentation
 
@@ -324,6 +327,25 @@ Class Cohesion (LCOM4):
 /path/to/Sources/MyFile.swift:45:1: error: Function 'complexFunction' has high complexity (Cyclomatic: 15, Cognitive: 23, Threshold: 10)
 /path/to/Sources/MyFile.swift:89:1: warning: Function 'anotherFunction' has high complexity (Cyclomatic: 12, Cognitive: 18, Threshold: 10)
 ```
+
+### SARIF Output (GitHub Code Scanning)
+
+Generate a SARIF report and upload it to GitHub Code Scanning to get complexity
+violations as inline pull request annotations:
+
+```yaml
+- name: Analyze complexity
+  run: swift-complexity Sources --format sarif --threshold 10 --recursive > swift-complexity.sarif
+
+- name: Upload SARIF
+  uses: github/codeql-action/upload-sarif@v3
+  if: always()
+  with:
+    sarif_file: swift-complexity.sarif
+```
+
+Violations are reported per metric (`cyclomatic_complexity`, `cognitive_complexity`,
+and `lcom4_cohesion`) with `warning` level, escalating to `error` at twice the threshold.
 
 ## Requirements
 

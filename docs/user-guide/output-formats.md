@@ -1,6 +1,6 @@
 # Output Formats
 
-swift-complexity supports three output formats for different use cases.
+swift-complexity supports five output formats for different use cases.
 
 ## Text Format (Default)
 
@@ -241,6 +241,112 @@ swift run swift-complexity Sources --format xml > complexity-report.xml
 </xsl:stylesheet>
 ```
 
+## Xcode Diagnostics Format
+
+Emits `file:line:column: severity: message` lines that Xcode picks up as inline
+warnings and errors. Functions above the threshold produce a `warning`, and
+functions above twice the threshold produce an `error`.
+
+### Example Output
+
+```text
+/path/to/Sources/MyFile.swift:45:1: error: Function 'complexFunction' has high complexity (Cyclomatic: 15, Cognitive: 23, Threshold: 10)
+/path/to/Sources/MyFile.swift:89:1: warning: Function 'anotherFunction' has high complexity (Cyclomatic: 12, Cognitive: 18, Threshold: 10)
+```
+
+### Usage
+
+```bash
+swift run swift-complexity Sources --format xcode --threshold 10
+```
+
+## SARIF Format
+
+[SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html)
+(Static Analysis Results Interchange Format) is the standard interchange format
+consumed by GitHub Code Scanning and many other analysis platforms.
+
+Each metric violation becomes one SARIF result:
+
+| Rule ID | Trigger | Level |
+|---------|---------|-------|
+| `cyclomatic_complexity` | Cyclomatic complexity >= threshold | `warning`, `error` at 2x threshold |
+| `cognitive_complexity` | Cognitive complexity >= threshold | `warning`, `error` at 2x threshold |
+| `lcom4_cohesion` | LCOM4 >= 3 (low cohesion) | `warning`, `error` at LCOM4 >= 5 |
+
+Violation detection uses the same `>=` semantics as the exit-code check, so a
+non-empty `results` array always coincides with exit code 1.
+
+> **Note**: A threshold is required (via `--threshold` or a config file) for
+> complexity results to be reported. Without one, the report is empty and a
+> warning is printed to stderr.
+
+File paths are emitted relative to the current working directory, so run the
+tool from your repository root for GitHub-compatible URIs.
+
+### Example Output
+
+```json
+{
+  "$schema" : "https://json.schemastore.org/sarif-2.1.0.json",
+  "version" : "2.1.0",
+  "runs" : [
+    {
+      "tool" : {
+        "driver" : {
+          "name" : "swift-complexity",
+          "version" : "1.0.0",
+          "informationUri" : "https://github.com/fummicc1/swift-complexity",
+          "rules" : [...]
+        }
+      },
+      "results" : [
+        {
+          "ruleId" : "cognitive_complexity",
+          "level" : "warning",
+          "message" : {
+            "text" : "Function 'processData' has cognitive complexity 12 (threshold: 10)"
+          },
+          "locations" : [
+            {
+              "physicalLocation" : {
+                "artifactLocation" : { "uri" : "Sources/Calculator.swift" },
+                "region" : { "startLine" : 42, "startColumn" : 5 }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Usage
+
+```bash
+swift run swift-complexity Sources --format sarif --threshold 10 --recursive > swift-complexity.sarif
+```
+
+### GitHub Code Scanning Integration
+
+Upload the report in a GitHub Actions workflow to see violations as pull
+request annotations and in the repository's Security tab:
+
+```yaml
+- name: Analyze complexity
+  run: swift-complexity Sources --format sarif --threshold 10 --recursive > swift-complexity.sarif
+
+- name: Upload SARIF
+  uses: github/codeql-action/upload-sarif@v3
+  if: always()
+  with:
+    sarif_file: swift-complexity.sarif
+```
+
+`if: always()` ensures the report is uploaded even when the analysis step fails
+the build via exit code 1.
+
 ## Choosing the Right Format
 
 | Format | Use Case | Best For |
@@ -248,3 +354,5 @@ swift run swift-complexity Sources --format xml > complexity-report.xml
 | **Text** | Terminal display, quick review | Developers, manual inspection |
 | **JSON** | Tool integration, scripts | CI/CD, analysis tools, dashboards |
 | **XML** | Enterprise reporting, XSLT | Report generation, IDE integration |
+| **Xcode** | In-editor diagnostics | Xcode users, build tool plugins |
+| **SARIF** | Code scanning platforms | GitHub Code Scanning, PR annotations |

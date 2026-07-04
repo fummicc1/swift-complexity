@@ -1,12 +1,13 @@
 import Foundation
 import MCP
+import SwiftComplexityCore
 
 @main
 struct SwiftComplexityMCPServer {
     static func main() async throws {
         let server = Server(
             name: "swift-complexity",
-            version: "1.0.0",
+            version: SwiftComplexityVersion.current,
             capabilities: .init(
                 tools: .init()
             )

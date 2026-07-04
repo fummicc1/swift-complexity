@@ -39,6 +39,8 @@ public class OutputFormatter {
             return formatAsXML(results: results, options: options)
         case .xcode:
             return formatAsXcodeDiagnostics(results: results, options: options)
+        case .sarif:
+            return formatAsSARIF(results: results, options: options)
         }
     }
 
