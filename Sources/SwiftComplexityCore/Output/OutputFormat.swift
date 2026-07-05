@@ -6,6 +6,7 @@ public enum OutputFormat: String, CaseIterable, Codable, Sendable {
     case json
     case xml
     case xcode  // Xcode diagnostics format
+    case sarif  // SARIF 2.1.0 for GitHub Code Scanning
 
     public static var help: String {
         let descriptions = allCases.map { format in
@@ -24,6 +25,8 @@ public enum OutputFormat: String, CaseIterable, Codable, Sendable {
             return "XML format for report tools"
         case .xcode:
             return "Xcode diagnostics format for IDE integration"
+        case .sarif:
+            return "SARIF 2.1.0 format for GitHub Code Scanning and other SARIF consumers"
         }
     }
 

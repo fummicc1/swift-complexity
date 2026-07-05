@@ -27,7 +27,7 @@ struct CLICommandTests {
         // Then
         #expect(config.commandName == "swift-complexity")
         #expect(config.abstract == "Analyze Swift code complexity and quality metrics")
-        #expect(config.version == "1.0.0")
+        #expect(config.version == SwiftComplexityVersion.current)
     }
 
     @Test("OutputFormat ArgumentParser conformance")
@@ -36,12 +36,14 @@ struct CLICommandTests {
         let textFormat = OutputFormat(argument: "text")
         let jsonFormat = OutputFormat(argument: "json")
         let xmlFormat = OutputFormat(argument: "xml")
+        let sarifFormat = OutputFormat(argument: "sarif")
         let invalidFormat = OutputFormat(argument: "invalid")
 
         // Then
         #expect(textFormat == .text)
         #expect(jsonFormat == .json)
         #expect(xmlFormat == .xml)
+        #expect(sarifFormat == .sarif)
         #expect(invalidFormat == nil)
     }
 
@@ -65,11 +67,12 @@ struct CLICommandTests {
         let values = OutputFormat.allValueStrings
 
         // Then
-        #expect(values.count == 4)
+        #expect(values.count == 5)
         #expect(values.contains("text"))
         #expect(values.contains("json"))
         #expect(values.contains("xml"))
         #expect(values.contains("xcode"))
+        #expect(values.contains("sarif"))
     }
 }
 

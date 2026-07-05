@@ -35,7 +35,7 @@ public struct ComplexityCommand: AsyncParsableCommand {
             This tool analyzes Swift source code to calculate cyclomatic and cognitive complexity metrics.
             It can process individual files or entire directory trees recursively.
             """,
-        version: "1.0.0"
+        version: SwiftComplexityVersion.current
     )
 
     // MARK: - Arguments
@@ -127,6 +127,13 @@ public struct ComplexityCommand: AsyncParsableCommand {
         try validateLCOM4Options()
 
         let configuration = try loadConfiguration()
+
+        if format == .sarif, threshold == nil, configuration.isEmpty {
+            FileHandle.standardError.write(
+                Data(
+                    "Warning: SARIF output contains no results unless a threshold is set via --threshold or a config file.\n"
+                        .utf8))
+        }
 
         logVerboseConfiguration(configuration: configuration)
 

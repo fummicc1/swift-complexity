@@ -467,6 +467,108 @@ struct OutputFormatterTests {
         #expect(output.contains("\"cyclomaticComplexity\":1"))
         #expect(output.contains("\"cognitiveComplexity\":0"))
     }
+
+    @Test("SARIF format reports one result per violated metric")
+    func sarifFormat() throws {
+        // Given
+        let location = SourceLocation(line: 12, column: 5)
+        let functions = [
+            // Exceeds threshold 10 for both metrics; cognitive reaches 2x -> error
+            FunctionComplexity(
+                name: "complexFunc", signature: "func complexFunc()", cyclomaticComplexity: 11,
+                cognitiveComplexity: 20, location: location),
+            // Below threshold -> no results
+            FunctionComplexity(
+                name: "simpleFunc", signature: "func simpleFunc()", cyclomaticComplexity: 1,
+                cognitiveComplexity: 0, location: SourceLocation(line: 1, column: 1)),
+        ]
+        let result = ComplexityResult(filePath: "Sources/test.swift", functions: functions)
+        let formatter = OutputFormatter()
+        let options = OutputOptions(threshold: 10)
+
+        // When
+        let output = formatter.format(results: [result], format: .sarif, options: options)
+
+        // Then - valid JSON with SARIF envelope
+        let json =
+            try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any] ?? [:]
+        #expect(json["$schema"] as? String == "https://json.schemastore.org/sarif-2.1.0.json")
+        #expect(json["version"] as? String == "2.1.0")
+
+        let runs = json["runs"] as? [[String: Any]] ?? []
+        let results = runs.first?["results"] as? [[String: Any]] ?? []
+        #expect(results.count == 2)
+
+        // Then - metric-specific rule ids and severity levels
+        let levelsByRule = Dictionary(
+            uniqueKeysWithValues: results.map {
+                ($0["ruleId"] as? String ?? "", $0["level"] as? String ?? "")
+            })
+        #expect(levelsByRule["cyclomatic_complexity"] == "warning")  // 11 < 2x threshold
+        #expect(levelsByRule["cognitive_complexity"] == "error")  // 20 >= 2x threshold
+
+        let locations = results.first?["locations"] as? [[String: Any]] ?? []
+        let physical = locations.first?["physicalLocation"] as? [String: Any] ?? [:]
+        let region = physical["region"] as? [String: Any] ?? [:]
+        let artifact = physical["artifactLocation"] as? [String: Any] ?? [:]
+        #expect(region["startLine"] as? Int == 12)
+        #expect(artifact["uri"] as? String == "Sources/test.swift")
+        #expect(!output.contains("simpleFunc"))
+    }
+
+    @Test("SARIF format is empty without a threshold")
+    func sarifFormatWithoutThreshold() throws {
+        // Given
+        let functions = [
+            FunctionComplexity(
+                name: "complexFunc", signature: "func complexFunc()", cyclomaticComplexity: 30,
+                cognitiveComplexity: 30, location: SourceLocation(line: 1, column: 1))
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When - no threshold and no configuration
+        let output = formatter.format(results: [result], format: .sarif, options: OutputOptions())
+
+        // Then - mirrors the exit-code semantics: nothing exceeds without a threshold
+        let json =
+            try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any] ?? [:]
+        let runs = json["runs"] as? [[String: Any]] ?? []
+        let results = runs.first?["results"] as? [[String: Any]] ?? []
+        #expect(results.isEmpty)
+    }
+
+    @Test("SARIF format reports low cohesion classes")
+    func sarifFormatWithCohesion() throws {
+        // Given
+        let cohesions = [
+            // LCOM4 >= 5 -> error
+            ClassCohesion(
+                name: "GodClass", type: .class, lcom4: 5, methodCount: 10, propertyCount: 8,
+                location: SourceLocation(line: 3, column: 1)),
+            // High cohesion -> no result
+            ClassCohesion(
+                name: "FocusedClass", type: .struct, lcom4: 1, methodCount: 3, propertyCount: 2,
+                location: SourceLocation(line: 40, column: 1)),
+        ]
+        let result = ComplexityResult(
+            filePath: "test.swift", functions: [], classCohesions: cohesions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(results: [result], format: .sarif, options: OutputOptions())
+
+        // Then
+        let json =
+            try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any] ?? [:]
+        let runs = json["runs"] as? [[String: Any]] ?? []
+        let results = runs.first?["results"] as? [[String: Any]] ?? []
+        #expect(results.count == 1)
+        #expect(results.first?["ruleId"] as? String == "lcom4_cohesion")
+        #expect(results.first?["level"] as? String == "error")
+        #expect(output.contains("GodClass"))
+        #expect(!output.contains("FocusedClass"))
+    }
 }
 
 // MARK: - Integration Tests
