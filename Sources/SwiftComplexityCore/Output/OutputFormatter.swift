@@ -337,6 +337,11 @@ public class OutputFormatter {
     }
 
     /// Creates a complexity diagnostic message
+    ///
+    /// A metric suppressed via `// swift-complexity:disable` is excluded from
+    /// the exceedance and severity checks below, but both raw values are
+    /// always shown in the message — suppression only skips the judgment, it
+    /// never hides the underlying numbers.
     private func createComplexityDiagnostic(
         for function: FunctionComplexity,
         in filePath: String,
@@ -345,10 +350,15 @@ public class OutputFormatter {
         let cyclomatic = function.cyclomaticComplexity
         let cognitive = function.cognitiveComplexity
 
-        guard cyclomatic > threshold || cognitive > threshold else { return nil }
+        let cyclomaticExceeds = !function.isSuppressed(.cyclomatic) && cyclomatic > threshold
+        let cognitiveExceeds = !function.isSuppressed(.cognitive) && cognitive > threshold
+
+        guard cyclomaticExceeds || cognitiveExceeds else { return nil }
 
         let severity =
-            (cyclomatic > threshold * 2 || cognitive > threshold * 2) ? "error" : "warning"
+            (cyclomaticExceeds && cyclomatic > threshold * 2)
+                || (cognitiveExceeds && cognitive > threshold * 2)
+            ? "error" : "warning"
         let message =
             "Function '\(function.name)' has high complexity (Cyclomatic: \(cyclomatic), Cognitive: \(cognitive), Threshold: \(threshold))"
 

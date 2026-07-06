@@ -181,4 +181,16 @@ struct CLIConfigOptionTests {
         #expect(command.config == "rules.yml")
         #expect(command.threshold == 10)
     }
+
+    @Test("--report-suppressions defaults to false")
+    func reportSuppressionsDefaultsToFalse() throws {
+        let command = try ComplexityCommand.parse(["Sources"])
+        #expect(command.reportSuppressions == false)
+    }
+
+    @Test("--report-suppressions is parsed")
+    func reportSuppressionsParsed() throws {
+        let command = try ComplexityCommand.parse(["Sources", "--report-suppressions"])
+        #expect(command.reportSuppressions == true)
+    }
 }

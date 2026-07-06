@@ -38,6 +38,7 @@ swift run SwiftComplexity path/to/directory --recursive
 - `--cyclomatic-only` - Show only cyclomatic complexity metrics
 - `--cognitive-only` - Show only cognitive complexity metrics
 - `--recursive` - Recursively analyze subdirectories
+- `--report-suppressions` - Print every function with a `// swift-complexity:disable` comment, and its current metric values, to stderr
 
 ### Filtering Options
 
@@ -133,6 +134,50 @@ swift run swift-complexity Sources --recursive
 
 # Or point at a specific config file
 swift run swift-complexity Sources --recursive --config config/complexity.yml
+```
+
+## Suppressing Specific Violations
+
+When a function's complexity is unavoidable and reviewed on purpose, add a
+`// swift-complexity:disable` comment directly above its declaration (function,
+initializer, deinitializer, or computed property). There is no separate
+"disable next line" form and no matching "enable" comment — the comment always
+applies to exactly the one declaration it immediately precedes.
+
+```swift
+// swift-complexity:disable
+func parseLegacyFormat(_ input: String) -> Document {
+    // A large switch statement kept for backward compatibility.
+    ...
+}
+
+// swift-complexity:disable cognitive
+func stateMachine(_ event: Event) {
+    // Only cognitive complexity is suppressed; cyclomatic is still checked.
+    ...
+}
+```
+
+- A bare `// swift-complexity:disable` suppresses every metric for that
+  declaration.
+- Naming specific metrics (`cyclomatic`, `cognitive`, space- or comma-separated)
+  suppresses only those, leaving the others checked as usual.
+- An unrecognized metric name suppresses nothing for that comment — suppression
+  fails closed on a typo instead of silently disabling every metric.
+- `///` documentation comments are never treated as a directive, so a doc
+  comment above a suppressed declaration is unaffected.
+- Suppressed values are still computed and shown in every output format; only
+  the threshold judgment (and therefore exit code 1, and any warning in
+  `xcode`/`sarif` output) is skipped for the suppressed metric.
+- LCOM4 class cohesion has no suppression mechanism yet, since it is a
+  type-level metric rather than a per-function one.
+
+Run with `--report-suppressions` to print every suppressed function and its
+current metric values to stderr, so suppression comments stay visible instead
+of silently hiding violations:
+
+```bash
+swift run swift-complexity Sources --recursive --threshold 10 --report-suppressions
 ```
 
 ### Complex Examples

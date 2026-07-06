@@ -412,6 +412,85 @@ struct FunctionDetectionTests {
         #expect(setter?.cyclomaticComplexity == 1)
         #expect(setter?.cognitiveComplexity == 0)
     }
+
+    @Test("Suppression comments are scoped to their own declaration")
+    func suppressionCommentsScoping() async throws {
+        // Given
+        let code = try loadFixture("suppressed_functions")
+        let sourceFile = Parser.parse(source: code)
+        let analyzer = try ComplexityAnalyzer()
+
+        // When
+        let result = try await analyzer.analyze(sourceFile: sourceFile, filePath: "test.swift")
+        func suppressed(_ name: String) -> Set<SuppressedMetric>? {
+            result.functions.first { $0.name == name }?.suppressedMetrics
+        }
+
+        // Then
+        #expect(suppressed("fullySuppressed") == Set(SuppressedMetric.allCases))
+        #expect(suppressed("cyclomaticOnlySuppressed") == [.cyclomatic])
+        #expect(suppressed("cognitiveOnlySuppressed") == [.cognitive])
+        // An unrelated preceding comment must not trigger suppression.
+        #expect(suppressed("notSuppressed") == nil)
+        // A typo'd metric name fails closed: nothing is suppressed.
+        #expect(suppressed("typoedMetricNotSuppressed") == nil)
+        // Suppression scopes to a computed property's own declaration too.
+        #expect(suppressed("isValid") == Set(SuppressedMetric.allCases))
+    }
+}
+
+// MARK: - Suppression Parsing Tests
+
+@Suite("Suppression parsing", .tags(.unit, .detectors))
+struct SuppressionParserTests {
+
+    @Test("Bare disable suppresses all metrics")
+    func bareDisable() {
+        let trivia: Trivia = [.lineComment("// swift-complexity:disable"), .newlines(1)]
+        #expect(SuppressionParser.suppressedMetrics(in: trivia) == Set(SuppressedMetric.allCases))
+    }
+
+    @Test("Specific metric name suppresses only that metric")
+    func specificMetric() {
+        let trivia: Trivia = [
+            .lineComment("// swift-complexity:disable cyclomatic"), .newlines(1),
+        ]
+        #expect(SuppressionParser.suppressedMetrics(in: trivia) == [.cyclomatic])
+    }
+
+    @Test("Comma-separated metric names are all recognized")
+    func commaSeparatedMetrics() {
+        let trivia: Trivia = [
+            .lineComment("// swift-complexity:disable cyclomatic, cognitive"), .newlines(1),
+        ]
+        #expect(SuppressionParser.suppressedMetrics(in: trivia) == Set(SuppressedMetric.allCases))
+    }
+
+    @Test("Unrecognized metric name suppresses nothing (fails closed on a typo)")
+    func typoedMetricSuppressesNothing() {
+        let trivia: Trivia = [
+            .lineComment("// swift-complexity:disable cyclomattic"), .newlines(1),
+        ]
+        #expect(SuppressionParser.suppressedMetrics(in: trivia).isEmpty)
+    }
+
+    @Test("Unrelated comment is not treated as a directive")
+    func unrelatedCommentIgnored() {
+        let trivia: Trivia = [.lineComment("// just a regular comment"), .newlines(1)]
+        #expect(SuppressionParser.suppressedMetrics(in: trivia).isEmpty)
+    }
+
+    @Test("Doc comments are never treated as a directive")
+    func docCommentIgnored() {
+        let trivia: Trivia = [.docLineComment("/// swift-complexity:disable"), .newlines(1)]
+        #expect(SuppressionParser.suppressedMetrics(in: trivia).isEmpty)
+    }
+
+    @Test("A false-prefix match like disableFoo is not our directive")
+    func falsePrefixNotMatched() {
+        let trivia: Trivia = [.lineComment("// swift-complexity:disableFoo"), .newlines(1)]
+        #expect(SuppressionParser.suppressedMetrics(in: trivia).isEmpty)
+    }
 }
 
 // MARK: - Output Formatter Tests
@@ -466,6 +545,49 @@ struct OutputFormatterTests {
         #expect(output.contains("\"testFunc\""))
         #expect(output.contains("\"cyclomaticComplexity\":1"))
         #expect(output.contains("\"cognitiveComplexity\":0"))
+    }
+
+    @Test("Xcode diagnostics still flag a function via its non-suppressed metric")
+    func xcodeDiagnosticsPartiallySuppressed() {
+        // Given - both metrics exceed the threshold, but only cyclomatic is suppressed
+        let functions = [
+            FunctionComplexity(
+                name: "partiallySuppressed", signature: "func partiallySuppressed()",
+                cyclomaticComplexity: 20, cognitiveComplexity: 20,
+                location: SourceLocation(line: 3, column: 1),
+                suppressedMetrics: [.cyclomatic])
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+        let options = OutputOptions(threshold: 10)
+
+        // When
+        let output = formatter.format(results: [result], format: .xcode, options: options)
+
+        // Then - still reported (cognitive is not suppressed), values remain visible
+        #expect(output.contains("test.swift:3:1"))
+        #expect(output.contains("Cyclomatic: 20, Cognitive: 20"))
+    }
+
+    @Test("Xcode diagnostics stay silent when every offending metric is suppressed")
+    func xcodeDiagnosticsFullySuppressed() {
+        // Given
+        let functions = [
+            FunctionComplexity(
+                name: "fullySuppressed", signature: "func fullySuppressed()",
+                cyclomaticComplexity: 20, cognitiveComplexity: 20,
+                location: SourceLocation(line: 3, column: 1),
+                suppressedMetrics: Set(SuppressedMetric.allCases))
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+        let options = OutputOptions(threshold: 10)
+
+        // When
+        let output = formatter.format(results: [result], format: .xcode, options: options)
+
+        // Then
+        #expect(output.isEmpty)
     }
 
     @Test("SARIF format reports one result per violated metric")
@@ -536,6 +658,32 @@ struct OutputFormatterTests {
         let runs = json["runs"] as? [[String: Any]] ?? []
         let results = runs.first?["results"] as? [[String: Any]] ?? []
         #expect(results.isEmpty)
+    }
+
+    @Test("SARIF format skips a metric suppressed via // swift-complexity:disable")
+    func sarifFormatWithSuppression() throws {
+        // Given - both metrics exceed the threshold, but only cyclomatic is suppressed
+        let functions = [
+            FunctionComplexity(
+                name: "partiallySuppressed", signature: "func partiallySuppressed()",
+                cyclomaticComplexity: 20, cognitiveComplexity: 20,
+                location: SourceLocation(line: 1, column: 1),
+                suppressedMetrics: [.cyclomatic])
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+        let options = OutputOptions(threshold: 10)
+
+        // When
+        let output = formatter.format(results: [result], format: .sarif, options: options)
+
+        // Then - only the non-suppressed metric produces a result
+        let json =
+            try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any] ?? [:]
+        let runs = json["runs"] as? [[String: Any]] ?? []
+        let results = runs.first?["results"] as? [[String: Any]] ?? []
+        #expect(results.count == 1)
+        #expect(results.first?["ruleId"] as? String == "cognitive_complexity")
     }
 
     @Test("SARIF format reports low cohesion classes")

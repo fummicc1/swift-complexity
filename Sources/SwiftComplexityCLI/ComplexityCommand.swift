@@ -118,6 +118,13 @@ public struct ComplexityCommand: AsyncParsableCommand {
     )
     public var verbose: Bool = false
 
+    @Flag(
+        name: .long,
+        help:
+            "Print every function with a // swift-complexity:disable comment, and its current metric values, to stderr"
+    )
+    public var reportSuppressions: Bool = false
+
     // MARK: - Execution
 
     public init() {}
@@ -149,6 +156,10 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
             let results = try await fileProcessor.processFiles(
                 at: paths, options: processingOptions)
+
+            if reportSuppressions {
+                printSuppressionsReport(results: results)
+            }
 
             let filteredResults = filterByThreshold(
                 results: results, threshold: threshold, configuration: configuration)
@@ -267,6 +278,39 @@ public struct ComplexityCommand: AsyncParsableCommand {
     }
 
     // MARK: - Private Methods
+
+    /// Prints every suppressed function with its current metric values to
+    /// stderr, so `// swift-complexity:disable` comments stay visible instead
+    /// of silently hiding violations.
+    private func printSuppressionsReport(results: [ComplexityResult]) {
+        var lines: [String] = []
+        for result in results {
+            for function in result.functions {
+                guard let suppressed = function.suppressedMetrics, !suppressed.isEmpty else {
+                    continue
+                }
+                let metricValues = suppressed.sorted { $0.rawValue < $1.rawValue }.map {
+                    metric -> String in
+                    switch metric {
+                    case .cyclomatic:
+                        return "cyclomatic (\(function.cyclomaticComplexity))"
+                    case .cognitive:
+                        return "cognitive (\(function.cognitiveComplexity))"
+                    }
+                }
+                lines.append(
+                    "\(result.filePath):\(function.location.line): \(function.name) — \(metricValues.joined(separator: ", "))"
+                )
+            }
+        }
+
+        let header =
+            lines.isEmpty
+            ? "No suppressed complexity checks found.\n"
+            : "Suppressed complexity checks:\n" + lines.map { "  \($0)" }.joined(separator: "\n")
+                + "\n"
+        FileHandle.standardError.write(Data(header.utf8))
+    }
 
     private func filterByThreshold(
         results: [ComplexityResult],
