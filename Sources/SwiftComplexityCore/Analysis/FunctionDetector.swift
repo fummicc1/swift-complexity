@@ -8,19 +8,24 @@ struct DetectedFunction {
     let location: SourceLocation
     /// Nearest enclosing nominal type name (or extended type for extensions); nil for free functions.
     let enclosingTypeName: String?
+    /// Metrics suppressed via a `// swift-complexity:disable` comment directly
+    /// above this declaration.
+    let suppressedMetrics: Set<SuppressedMetric>
 
     init(
         name: String,
         signature: String,
         body: CodeBlockSyntax?,
         location: SourceLocation,
-        enclosingTypeName: String? = nil
+        enclosingTypeName: String? = nil,
+        suppressedMetrics: Set<SuppressedMetric> = []
     ) {
         self.name = name
         self.signature = signature
         self.body = body
         self.location = location
         self.enclosingTypeName = enclosingTypeName
+        self.suppressedMetrics = suppressedMetrics
     }
 }
 
@@ -49,7 +54,8 @@ class FunctionDetector: SyntaxVisitor {
             signature: signature,
             body: node.body,
             location: location,
-            enclosingTypeName: enclosingTypeName(of: node)
+            enclosingTypeName: enclosingTypeName(of: node),
+            suppressedMetrics: SuppressionParser.suppressedMetrics(in: node.leadingTrivia)
         )
 
         detectedFunctions.append(detectedFunction)
@@ -67,7 +73,8 @@ class FunctionDetector: SyntaxVisitor {
             signature: signature,
             body: node.body,
             location: location,
-            enclosingTypeName: enclosingTypeName(of: node)
+            enclosingTypeName: enclosingTypeName(of: node),
+            suppressedMetrics: SuppressionParser.suppressedMetrics(in: node.leadingTrivia)
         )
 
         detectedFunctions.append(detectedFunction)
@@ -85,7 +92,8 @@ class FunctionDetector: SyntaxVisitor {
             signature: signature,
             body: node.body,
             location: location,
-            enclosingTypeName: enclosingTypeName(of: node)
+            enclosingTypeName: enclosingTypeName(of: node),
+            suppressedMetrics: SuppressionParser.suppressedMetrics(in: node.leadingTrivia)
         )
 
         detectedFunctions.append(detectedFunction)
@@ -129,7 +137,8 @@ class FunctionDetector: SyntaxVisitor {
             signature: signature,
             body: node.body,
             location: location,
-            enclosingTypeName: enclosingTypeName(of: node)
+            enclosingTypeName: enclosingTypeName(of: node),
+            suppressedMetrics: SuppressionParser.suppressedMetrics(in: node.leadingTrivia)
         )
 
         detectedFunctions.append(detectedFunction)
@@ -220,7 +229,8 @@ class FunctionDetector: SyntaxVisitor {
             signature: signature,
             body: codeBlock,
             location: location,
-            enclosingTypeName: enclosingTypeName(of: variable)
+            enclosingTypeName: enclosingTypeName(of: variable),
+            suppressedMetrics: SuppressionParser.suppressedMetrics(in: variable.leadingTrivia)
         )
 
         detectedFunctions.append(detectedFunction)

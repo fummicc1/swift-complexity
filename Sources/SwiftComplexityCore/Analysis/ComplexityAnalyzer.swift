@@ -54,7 +54,9 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
                 cyclomaticComplexity: cyclomaticComplexity,
                 cognitiveComplexity: cognitiveComplexity,
                 location: function.location,
-                enclosingTypeName: function.enclosingTypeName
+                enclosingTypeName: function.enclosingTypeName,
+                suppressedMetrics: function.suppressedMetrics.isEmpty
+                    ? nil : function.suppressedMetrics
             )
 
             functionComplexities.append(functionComplexity)

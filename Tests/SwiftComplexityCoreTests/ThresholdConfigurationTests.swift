@@ -104,13 +104,16 @@ struct ThresholdConfigurationTests {
 
     @Suite("isExceeded")
     struct IsExceededTests {
-        private func function(type: String?, cyclomatic: Int, cognitive: Int) -> FunctionComplexity
-        {
+        private func function(
+            type: String?, cyclomatic: Int, cognitive: Int,
+            suppressed: Set<SuppressedMetric>? = nil
+        ) -> FunctionComplexity {
             FunctionComplexity(
                 name: "f", signature: "func f()",
                 cyclomaticComplexity: cyclomatic, cognitiveComplexity: cognitive,
                 location: SourceLocation(line: 1, column: 1),
-                enclosingTypeName: type
+                enclosingTypeName: type,
+                suppressedMetrics: suppressed
             )
         }
 
@@ -143,6 +146,31 @@ struct ThresholdConfigurationTests {
             let config = ThresholdConfiguration.empty
             let fn = function(type: nil, cyclomatic: 99, cognitive: 99)
             #expect(!config.isExceeded(fn, fallback: nil))
+        }
+
+        @Test("Suppressing every metric clears the flag entirely")
+        func suppressingAllMetricsClearsFlag() {
+            let config = ThresholdConfiguration.empty
+            let fn = function(
+                type: nil, cyclomatic: 20, cognitive: 20,
+                suppressed: Set(SuppressedMetric.allCases))
+            #expect(!config.isExceeded(fn, fallback: 5))
+        }
+
+        @Test("Suppressing one metric still lets the other metric flag it")
+        func suppressingOneMetricLeavesTheOtherActive() {
+            let config = ThresholdConfiguration.empty
+            let fn = function(
+                type: nil, cyclomatic: 20, cognitive: 20, suppressed: [.cyclomatic])
+            #expect(config.isExceeded(fn, fallback: 5))
+        }
+
+        @Test("Suppressing the only metric that would have exceeded clears the flag")
+        func suppressingTheOnlyOffendingMetricClearsFlag() {
+            let config = ThresholdConfiguration.empty
+            let fn = function(
+                type: nil, cyclomatic: 20, cognitive: 1, suppressed: [.cyclomatic])
+            #expect(!config.isExceeded(fn, fallback: 5))
         }
     }
 
