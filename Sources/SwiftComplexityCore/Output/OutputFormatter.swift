@@ -367,11 +367,14 @@ public class OutputFormatter {
     }
 
     /// Creates a cohesion diagnostic message
+    ///
+    /// A type suppressed via `// swift-complexity:disable` emits no
+    /// diagnostic; its LCOM4 value stays visible in the other output formats.
     private func createCohesionDiagnostic(
         for cohesion: ClassCohesion,
         in filePath: String
     ) -> String? {
-        guard cohesion.cohesionLevel == .low else { return nil }
+        guard !cohesion.isSuppressed(.lcom4), cohesion.cohesionLevel == .low else { return nil }
 
         let severity = cohesion.lcom4 >= 5 ? "error" : "warning"
         let message =

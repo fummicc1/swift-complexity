@@ -153,7 +153,7 @@ struct ThresholdConfigurationTests {
             let config = ThresholdConfiguration.empty
             let fn = function(
                 type: nil, cyclomatic: 20, cognitive: 20,
-                suppressed: Set(SuppressedMetric.allCases))
+                suppressed: SuppressedMetric.functionLevel)
             #expect(!config.isExceeded(fn, fallback: 5))
         }
 

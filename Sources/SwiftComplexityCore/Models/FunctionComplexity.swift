@@ -1,10 +1,24 @@
 import Foundation
 
-/// A per-function metric that can be excluded from threshold checks via a
+/// A metric that can be excluded from threshold checks via a
 /// `// swift-complexity:disable` comment.
+///
+/// `cyclomatic`/`cognitive` apply to function-level declarations,
+/// `lcom4` to type declarations (class/struct/actor). Which subset a
+/// directive can actually suppress is decided by the declaration it
+/// precedes — see `SuppressedMetric.functionLevel`/`typeLevel`.
 public enum SuppressedMetric: String, Codable, Hashable, Sendable, CaseIterable {
     case cyclomatic
     case cognitive
+    case lcom4
+}
+
+extension SuppressedMetric {
+    /// Metrics a directive above a function-level declaration can suppress.
+    public static let functionLevel: Set<SuppressedMetric> = [.cyclomatic, .cognitive]
+
+    /// Metrics a directive above a type declaration can suppress.
+    public static let typeLevel: Set<SuppressedMetric> = [.lcom4]
 }
 
 /// Represents complexity metrics for a single function or method

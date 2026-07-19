@@ -138,11 +138,13 @@ swift run swift-complexity Sources --recursive --config config/complexity.yml
 
 ## Suppressing Specific Violations
 
-When a function's complexity is unavoidable and reviewed on purpose, add a
-`// swift-complexity:disable` comment directly above its declaration (function,
-initializer, deinitializer, or computed property). There is no separate
-"disable next line" form and no matching "enable" comment — the comment always
-applies to exactly the one declaration it immediately precedes.
+When a declaration's complexity is unavoidable and reviewed on purpose, add a
+`// swift-complexity:disable` comment directly above it. The comment works on
+function-level declarations (function, initializer, deinitializer, or computed
+property) for `cyclomatic`/`cognitive`, and on type declarations
+(class/struct/actor) for `lcom4`. There is no separate "disable next line" form
+and no matching "enable" comment — the comment always applies to exactly the
+one declaration it immediately precedes.
 
 ```swift
 // swift-complexity:disable
@@ -156,12 +158,23 @@ func stateMachine(_ event: Event) {
     // Only cognitive complexity is suppressed; cyclomatic is still checked.
     ...
 }
+
+// swift-complexity:disable lcom4
+class LegacyOrderManager {
+    // Low cohesion is accepted while an incremental refactor is tracked
+    // elsewhere; member functions are still checked for complexity.
+    ...
+}
 ```
 
-- A bare `// swift-complexity:disable` suppresses every metric for that
-  declaration.
-- Naming specific metrics (`cyclomatic`, `cognitive`, space- or comma-separated)
-  suppresses only those, leaving the others checked as usual.
+- A bare `// swift-complexity:disable` suppresses every metric **of that
+  declaration itself**: `cyclomatic` and `cognitive` on a function,
+  `lcom4` on a type. A bare disable above a type never cascades to its
+  member functions — suppress each function individually if needed.
+- Naming specific metrics (`cyclomatic`, `cognitive`, `lcom4`, space- or
+  comma-separated) suppresses only those, leaving the others checked as usual.
+- A metric name that does not apply to the declaration level (e.g. `lcom4`
+  above a function, or `cyclomatic` above a class) suppresses nothing.
 - An unrecognized metric name suppresses nothing for that comment — suppression
   fails closed on a typo instead of silently disabling every metric.
 - `///` documentation comments are never treated as a directive, so a doc
@@ -169,12 +182,10 @@ func stateMachine(_ event: Event) {
 - Suppressed values are still computed and shown in every output format; only
   the threshold judgment (and therefore exit code 1, and any warning in
   `xcode`/`sarif` output) is skipped for the suppressed metric.
-- LCOM4 class cohesion has no suppression mechanism yet, since it is a
-  type-level metric rather than a per-function one.
 
-Run with `--report-suppressions` to print every suppressed function and its
-current metric values to stderr, so suppression comments stay visible instead
-of silently hiding violations:
+Run with `--report-suppressions` to print every suppressed function and type
+with its current metric values to stderr, so suppression comments stay visible
+instead of silently hiding violations:
 
 ```bash
 swift run swift-complexity Sources --recursive --threshold 10 --report-suppressions

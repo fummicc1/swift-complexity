@@ -121,7 +121,7 @@ public struct ComplexityCommand: AsyncParsableCommand {
     @Flag(
         name: .long,
         help:
-            "Print every function with a // swift-complexity:disable comment, and its current metric values, to stderr"
+            "Print every function or type with a // swift-complexity:disable comment, and its current metric values, to stderr"
     )
     public var reportSuppressions: Bool = false
 
@@ -279,9 +279,9 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
     // MARK: - Private Methods
 
-    /// Prints every suppressed function with its current metric values to
-    /// stderr, so `// swift-complexity:disable` comments stay visible instead
-    /// of silently hiding violations.
+    /// Prints every suppressed function and type with its current metric
+    /// values to stderr, so `// swift-complexity:disable` comments stay
+    /// visible instead of silently hiding violations.
     private func printSuppressionsReport(results: [ComplexityResult]) {
         var lines: [String] = []
         for result in results {
@@ -289,17 +289,25 @@ public struct ComplexityCommand: AsyncParsableCommand {
                 guard let suppressed = function.suppressedMetrics, !suppressed.isEmpty else {
                     continue
                 }
-                let metricValues = suppressed.sorted { $0.rawValue < $1.rawValue }.map {
-                    metric -> String in
+                let metricValues = suppressed.sorted { $0.rawValue < $1.rawValue }.compactMap {
+                    metric -> String? in
                     switch metric {
                     case .cyclomatic:
                         return "cyclomatic (\(function.cyclomaticComplexity))"
                     case .cognitive:
                         return "cognitive (\(function.cognitiveComplexity))"
+                    case .lcom4:
+                        return nil  // type-level metric, never present on a function
                     }
                 }
                 lines.append(
                     "\(result.filePath):\(function.location.line): \(function.name) — \(metricValues.joined(separator: ", "))"
+                )
+            }
+            for cohesion in result.classCohesions ?? [] {
+                guard cohesion.isSuppressed(.lcom4) else { continue }
+                lines.append(
+                    "\(result.filePath):\(cohesion.location.line): \(cohesion.name) — lcom4 (\(cohesion.lcom4))"
                 )
             }
         }
@@ -325,9 +333,10 @@ public struct ComplexityCommand: AsyncParsableCommand {
                 configuration.isExceeded(function, fallback: threshold)
             }
 
-            // For LCOM4, filter classes with low cohesion (LCOM4 >= 3)
+            // For LCOM4, filter classes with low cohesion (LCOM4 >= 3),
+            // excluding types whose cohesion check is suppressed inline
             let filteredCohesions = result.classCohesions?.filter { cohesion in
-                cohesion.lcom4 >= 3
+                cohesion.lcom4 >= 3 && !cohesion.isSuppressed(.lcom4)
             }
 
             // Keep result if either functions or cohesions pass threshold

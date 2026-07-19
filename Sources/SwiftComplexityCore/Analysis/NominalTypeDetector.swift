@@ -28,17 +28,23 @@ struct DetectedNominal {
     let type: NominalTypeKind
     let members: MemberBlockItemListSyntax
     let location: SourceLocation
+    /// Type-level metrics suppressed via a `// swift-complexity:disable`
+    /// comment directly above this type declaration. Never cascades to the
+    /// type's member functions.
+    let suppressedMetrics: Set<SuppressedMetric>
 
     init(
         name: String,
         type: NominalTypeKind,
         members: MemberBlockItemListSyntax,
-        location: SourceLocation
+        location: SourceLocation,
+        suppressedMetrics: Set<SuppressedMetric> = []
     ) {
         self.name = name
         self.type = type
         self.members = members
         self.location = location
+        self.suppressedMetrics = suppressedMetrics
     }
 }
 
@@ -67,7 +73,9 @@ class NominalTypeDetector: SyntaxVisitor {
             name: name,
             type: .class,
             members: node.memberBlock.members,
-            location: location
+            location: location,
+            suppressedMetrics: SuppressionParser.suppressedMetrics(
+                in: node.leadingTrivia, applicableTo: SuppressedMetric.typeLevel)
         )
 
         detectedTypes.append(detectedNominal)
@@ -83,7 +91,9 @@ class NominalTypeDetector: SyntaxVisitor {
             name: name,
             type: .struct,
             members: node.memberBlock.members,
-            location: location
+            location: location,
+            suppressedMetrics: SuppressionParser.suppressedMetrics(
+                in: node.leadingTrivia, applicableTo: SuppressedMetric.typeLevel)
         )
 
         detectedTypes.append(detectedNominal)
@@ -99,7 +109,9 @@ class NominalTypeDetector: SyntaxVisitor {
             name: name,
             type: .actor,
             members: node.memberBlock.members,
-            location: location
+            location: location,
+            suppressedMetrics: SuppressionParser.suppressedMetrics(
+                in: node.leadingTrivia, applicableTo: SuppressedMetric.typeLevel)
         )
 
         detectedTypes.append(detectedNominal)
