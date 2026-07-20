@@ -55,7 +55,8 @@ class FunctionDetector: SyntaxVisitor {
             body: node.body,
             location: location,
             enclosingTypeName: enclosingTypeName(of: node),
-            suppressedMetrics: SuppressionParser.suppressedMetrics(in: node.leadingTrivia)
+            suppressedMetrics: SuppressionParser.suppressedMetrics(
+                in: node.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
         )
 
         detectedFunctions.append(detectedFunction)
@@ -74,7 +75,8 @@ class FunctionDetector: SyntaxVisitor {
             body: node.body,
             location: location,
             enclosingTypeName: enclosingTypeName(of: node),
-            suppressedMetrics: SuppressionParser.suppressedMetrics(in: node.leadingTrivia)
+            suppressedMetrics: SuppressionParser.suppressedMetrics(
+                in: node.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
         )
 
         detectedFunctions.append(detectedFunction)
@@ -93,7 +95,8 @@ class FunctionDetector: SyntaxVisitor {
             body: node.body,
             location: location,
             enclosingTypeName: enclosingTypeName(of: node),
-            suppressedMetrics: SuppressionParser.suppressedMetrics(in: node.leadingTrivia)
+            suppressedMetrics: SuppressionParser.suppressedMetrics(
+                in: node.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
         )
 
         detectedFunctions.append(detectedFunction)
@@ -138,7 +141,8 @@ class FunctionDetector: SyntaxVisitor {
             body: node.body,
             location: location,
             enclosingTypeName: enclosingTypeName(of: node),
-            suppressedMetrics: SuppressionParser.suppressedMetrics(in: node.leadingTrivia)
+            suppressedMetrics: SuppressionParser.suppressedMetrics(
+                in: node.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
         )
 
         detectedFunctions.append(detectedFunction)
@@ -230,7 +234,8 @@ class FunctionDetector: SyntaxVisitor {
             body: codeBlock,
             location: location,
             enclosingTypeName: enclosingTypeName(of: variable),
-            suppressedMetrics: SuppressionParser.suppressedMetrics(in: variable.leadingTrivia)
+            suppressedMetrics: SuppressionParser.suppressedMetrics(
+                in: variable.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
         )
 
         detectedFunctions.append(detectedFunction)

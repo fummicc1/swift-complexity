@@ -34,6 +34,12 @@ public struct ClassCohesion: Codable, Hashable, Sendable {
     /// Source code location
     public let location: SourceLocation
 
+    /// Type-level metrics excluded from cohesion judgments by a
+    /// `// swift-complexity:disable` comment directly above this type
+    /// declaration. `nil` when nothing is suppressed; the LCOM4 value is
+    /// still reported even when suppressed, only the judgment is skipped.
+    public let suppressedMetrics: Set<SuppressedMetric>?
+
     /// Cohesion level (computed property)
     public var cohesionLevel: CohesionLevel {
         switch lcom4 {
@@ -52,7 +58,8 @@ public struct ClassCohesion: Codable, Hashable, Sendable {
         lcom4: Int,
         methodCount: Int,
         propertyCount: Int,
-        location: SourceLocation
+        location: SourceLocation,
+        suppressedMetrics: Set<SuppressedMetric>? = nil
     ) {
         self.name = name
         self.type = type
@@ -60,6 +67,12 @@ public struct ClassCohesion: Codable, Hashable, Sendable {
         self.methodCount = methodCount
         self.propertyCount = propertyCount
         self.location = location
+        self.suppressedMetrics = suppressedMetrics
+    }
+
+    /// Whether `metric` is suppressed for this type.
+    public func isSuppressed(_ metric: SuppressedMetric) -> Bool {
+        suppressedMetrics?.contains(metric) ?? false
     }
 }
 

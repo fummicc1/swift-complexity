@@ -11,7 +11,7 @@ A command-line tool to analyze Swift code complexity and quality metrics using s
 - **Xcode Diagnostics**: Display complexity warnings and errors directly in Xcode editor with accurate line numbers
 - **Configurable Thresholds**: Set custom complexity thresholds via Xcode Build Settings or environment variables
 - **Per-Type Thresholds**: Assign different thresholds to types by name (prefix/suffix) via a `.swift-complexity.yml` config — e.g. stricter limits for `*Repository`, looser for `*UseCase`
-- **Inline Suppression**: Exempt a specific function from threshold checks with a `// swift-complexity:disable` comment, optionally scoped to just `cyclomatic` or `cognitive`
+- **Inline Suppression**: Exempt a specific function or type from threshold checks with a `// swift-complexity:disable` comment, optionally scoped to `cyclomatic`, `cognitive`, or `lcom4`
 - **Exit Code Integration**: Returns exit code 1 when complexity thresholds are exceeded, perfect for CI/CD pipelines
 - **Multiple Output Formats**: Text, JSON, XML, Xcode diagnostics, and SARIF output for different use cases
 - **Flexible Analysis**: Single files, directories, or recursive directory analysis
@@ -117,9 +117,10 @@ swift run SwiftComplexityCLI Sources --recursive --config config/complexity.yml
 
 ### Inline Suppression
 
-Exempt a single, reviewed function from threshold checks with a comment directly
-above its declaration. There is no "next line" form and no "enable" comment —
-the directive always applies to exactly the one declaration it precedes.
+Exempt a single, reviewed function or type from threshold checks with a comment
+directly above its declaration. There is no "next line" form and no "enable"
+comment — the directive always applies to exactly the one declaration it
+precedes, so a suppressed type never cascades to its member functions.
 
 ```swift
 // swift-complexity:disable
@@ -127,12 +128,15 @@ func parseLegacyFormat(_ input: String) -> Document { ... }
 
 // swift-complexity:disable cognitive
 func stateMachine(_ event: Event) { ... }  // cyclomatic is still checked
+
+// swift-complexity:disable lcom4
+class LegacyOrderManager { ... }  // member functions are still checked
 ```
 
 Suppressed values are still computed and shown in every output format — only the
 threshold judgment is skipped. Run with `--report-suppressions` to print every
-suppressed function and its current values to stderr, so suppressions stay
-visible instead of silently hiding violations. See the
+suppressed function and type with its current values to stderr, so suppressions
+stay visible instead of silently hiding violations. See the
 [usage guide](docs/user-guide/usage.md#suppressing-specific-violations) for the
 full syntax, including why an unrecognized metric name suppresses nothing
 rather than everything.

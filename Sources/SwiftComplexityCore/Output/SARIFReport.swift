@@ -186,7 +186,7 @@ extension OutputFormatter {
         let uri = relativizedURI(for: result.filePath)
 
         return cohesions.compactMap { cohesion in
-            guard cohesion.cohesionLevel == .low else { return nil }
+            guard !cohesion.isSuppressed(.lcom4), cohesion.cohesionLevel == .low else { return nil }
             let message =
                 "\(cohesion.type.rawValue.capitalized) '\(cohesion.name)' has low cohesion (LCOM4: \(cohesion.lcom4))"
             return SARIFResult(

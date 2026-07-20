@@ -427,7 +427,9 @@ struct FunctionDetectionTests {
         }
 
         // Then
-        #expect(suppressed("fullySuppressed") == Set(SuppressedMetric.allCases))
+        // Bare disable on a function yields only function-level metrics —
+        // lcom4 must never leak into a function's suppression set.
+        #expect(suppressed("fullySuppressed") == SuppressedMetric.functionLevel)
         #expect(suppressed("cyclomaticOnlySuppressed") == [.cyclomatic])
         #expect(suppressed("cognitiveOnlySuppressed") == [.cognitive])
         // An unrelated preceding comment must not trigger suppression.
@@ -435,7 +437,7 @@ struct FunctionDetectionTests {
         // A typo'd metric name fails closed: nothing is suppressed.
         #expect(suppressed("typoedMetricNotSuppressed") == nil)
         // Suppression scopes to a computed property's own declaration too.
-        #expect(suppressed("isValid") == Set(SuppressedMetric.allCases))
+        #expect(suppressed("isValid") == SuppressedMetric.functionLevel)
     }
 }
 
@@ -444,10 +446,17 @@ struct FunctionDetectionTests {
 @Suite("Suppression parsing", .tags(.unit, .detectors))
 struct SuppressionParserTests {
 
-    @Test("Bare disable suppresses all metrics")
+    @Test("Bare disable suppresses every metric applicable to the declaration")
     func bareDisable() {
         let trivia: Trivia = [.lineComment("// swift-complexity:disable"), .newlines(1)]
-        #expect(SuppressionParser.suppressedMetrics(in: trivia) == Set(SuppressedMetric.allCases))
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.functionLevel)
+                == SuppressedMetric.functionLevel)
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.typeLevel)
+                == SuppressedMetric.typeLevel)
     }
 
     @Test("Specific metric name suppresses only that metric")
@@ -455,7 +464,9 @@ struct SuppressionParserTests {
         let trivia: Trivia = [
             .lineComment("// swift-complexity:disable cyclomatic"), .newlines(1),
         ]
-        #expect(SuppressionParser.suppressedMetrics(in: trivia) == [.cyclomatic])
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.functionLevel) == [.cyclomatic])
     }
 
     @Test("Comma-separated metric names are all recognized")
@@ -463,7 +474,10 @@ struct SuppressionParserTests {
         let trivia: Trivia = [
             .lineComment("// swift-complexity:disable cyclomatic, cognitive"), .newlines(1),
         ]
-        #expect(SuppressionParser.suppressedMetrics(in: trivia) == Set(SuppressedMetric.allCases))
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.functionLevel)
+                == [.cyclomatic, .cognitive])
     }
 
     @Test("Unrecognized metric name suppresses nothing (fails closed on a typo)")
@@ -471,25 +485,115 @@ struct SuppressionParserTests {
         let trivia: Trivia = [
             .lineComment("// swift-complexity:disable cyclomattic"), .newlines(1),
         ]
-        #expect(SuppressionParser.suppressedMetrics(in: trivia).isEmpty)
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.functionLevel
+            ).isEmpty)
+    }
+
+    @Test("Metric of the wrong declaration level suppresses nothing")
+    func wrongLevelMetricSuppressesNothing() {
+        // lcom4 above a function-level declaration
+        let lcom4Trivia: Trivia = [
+            .lineComment("// swift-complexity:disable lcom4"), .newlines(1),
+        ]
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: lcom4Trivia, applicableTo: SuppressedMetric.functionLevel
+            ).isEmpty)
+
+        // cyclomatic above a type declaration
+        let cyclomaticTrivia: Trivia = [
+            .lineComment("// swift-complexity:disable cyclomatic"), .newlines(1),
+        ]
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: cyclomaticTrivia, applicableTo: SuppressedMetric.typeLevel
+            ).isEmpty)
+    }
+
+    @Test("lcom4 token is recognized for type declarations")
+    func lcom4Token() {
+        let trivia: Trivia = [.lineComment("// swift-complexity:disable lcom4"), .newlines(1)]
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.typeLevel) == [.lcom4])
     }
 
     @Test("Unrelated comment is not treated as a directive")
     func unrelatedCommentIgnored() {
         let trivia: Trivia = [.lineComment("// just a regular comment"), .newlines(1)]
-        #expect(SuppressionParser.suppressedMetrics(in: trivia).isEmpty)
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.functionLevel
+            ).isEmpty)
     }
 
     @Test("Doc comments are never treated as a directive")
     func docCommentIgnored() {
         let trivia: Trivia = [.docLineComment("/// swift-complexity:disable"), .newlines(1)]
-        #expect(SuppressionParser.suppressedMetrics(in: trivia).isEmpty)
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.functionLevel
+            ).isEmpty)
     }
 
     @Test("A false-prefix match like disableFoo is not our directive")
     func falsePrefixNotMatched() {
         let trivia: Trivia = [.lineComment("// swift-complexity:disableFoo"), .newlines(1)]
-        #expect(SuppressionParser.suppressedMetrics(in: trivia).isEmpty)
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.functionLevel
+            ).isEmpty)
+    }
+}
+
+// MARK: - Nominal Type Detection Tests
+
+@Suite("Nominal type detection", .tags(.unit, .detectors))
+struct NominalTypeDetectorTests {
+
+    @Test("Type-level suppression comments are scoped to their own declaration")
+    func typeSuppressionScoping() throws {
+        // Given
+        let code = try loadFixture("suppressed_types")
+        let sourceFile = Parser.parse(source: code)
+        let detector = NominalTypeDetector(viewMode: .sourceAccurate)
+
+        // When
+        let types = detector.detectTypes(in: sourceFile)
+        func suppressed(_ name: String) -> Set<SuppressedMetric>? {
+            types.first { $0.name == name }?.suppressedMetrics
+        }
+
+        // Then
+        #expect(types.count == 5)
+        // A bare disable above a type suppresses only the type's own metrics,
+        // never its member functions.
+        #expect(suppressed("BareSuppressedClass") == SuppressedMetric.typeLevel)
+        #expect(suppressed("Lcom4SuppressedStruct") == [.lcom4])
+        #expect(suppressed("NotSuppressedActor") == [])
+        // A function-level metric name above a type fails closed.
+        #expect(suppressed("WrongLevelMetricClass") == [])
+        #expect(suppressed("TypoedMetricClass") == [])
+    }
+
+    @Test("Member functions of a bare-suppressed type stay checked")
+    func noCascadeToMemberFunctions() throws {
+        // Given
+        let code = try loadFixture("suppressed_types")
+        let sourceFile = Parser.parse(source: code)
+        let detector = FunctionDetector(viewMode: .sourceAccurate)
+
+        // When
+        let functions = detector.detectFunctions(in: sourceFile)
+
+        // Then - no function inherits suppression from its enclosing type
+        for function in functions {
+            #expect(
+                function.suppressedMetrics.isEmpty,
+                "\(function.name) must not inherit type-level suppression")
+        }
     }
 }
 
@@ -577,7 +681,7 @@ struct OutputFormatterTests {
                 name: "fullySuppressed", signature: "func fullySuppressed()",
                 cyclomaticComplexity: 20, cognitiveComplexity: 20,
                 location: SourceLocation(line: 3, column: 1),
-                suppressedMetrics: Set(SuppressedMetric.allCases))
+                suppressedMetrics: SuppressedMetric.functionLevel)
         ]
         let result = ComplexityResult(filePath: "test.swift", functions: functions)
         let formatter = OutputFormatter()
@@ -716,6 +820,35 @@ struct OutputFormatterTests {
         #expect(results.first?["level"] as? String == "error")
         #expect(output.contains("GodClass"))
         #expect(!output.contains("FocusedClass"))
+    }
+
+    @Test("SARIF and Xcode formats skip a suppressed low-cohesion type")
+    func cohesionSuppressionSkipsJudgments() throws {
+        // Given - low cohesion (lcom4 5 would normally be an error), suppressed
+        let cohesions = [
+            ClassCohesion(
+                name: "SuppressedGodClass", type: .class, lcom4: 5, methodCount: 10,
+                propertyCount: 8, location: SourceLocation(line: 3, column: 1),
+                suppressedMetrics: [.lcom4])
+        ]
+        let result = ComplexityResult(
+            filePath: "test.swift", functions: [], classCohesions: cohesions)
+        let formatter = OutputFormatter()
+
+        // When
+        let sarif = formatter.format(results: [result], format: .sarif, options: OutputOptions())
+        let xcode = formatter.format(results: [result], format: .xcode, options: OutputOptions())
+        let json = formatter.format(results: [result], format: .json, options: OutputOptions())
+
+        // Then - no judgment in sarif/xcode, but the value stays visible in json
+        let parsed =
+            try JSONSerialization.jsonObject(with: Data(sarif.utf8)) as? [String: Any] ?? [:]
+        let runs = parsed["runs"] as? [[String: Any]] ?? []
+        let sarifResults = runs.first?["results"] as? [[String: Any]] ?? []
+        #expect(sarifResults.isEmpty)
+        #expect(xcode.isEmpty)
+        #expect(json.contains("SuppressedGodClass"))
+        #expect(json.contains("\"lcom4\":5"))
     }
 }
 

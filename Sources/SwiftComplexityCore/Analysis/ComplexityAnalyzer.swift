@@ -92,7 +92,9 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
                     lcom4: lcom4Value,
                     methodCount: methods,
                     propertyCount: properties,
-                    location: detectedType.location
+                    location: detectedType.location,
+                    suppressedMetrics: detectedType.suppressedMetrics.isEmpty
+                        ? nil : detectedType.suppressedMetrics
                 )
 
                 cohesions.append(cohesion)

@@ -13,7 +13,18 @@ enum SuppressionParser {
 
     /// Returns the set of metrics suppressed by any `swift-complexity:disable`
     /// comment found in `trivia`. Empty when no such comment is present.
-    static func suppressedMetrics(in trivia: Trivia) -> Set<SuppressedMetric> {
+    ///
+    /// The parsed metrics are intersected with `scope` — the metrics that
+    /// apply to the declaration kind the trivia precedes. This keeps a bare
+    /// disable meaning "every metric of this declaration itself" (a bare
+    /// disable above a type suppresses only the type-level metric, never its
+    /// member functions), and makes naming a metric of the wrong level (e.g.
+    /// `lcom4` above a function) suppress nothing rather than something
+    /// surprising.
+    static func suppressedMetrics(
+        in trivia: Trivia,
+        applicableTo scope: Set<SuppressedMetric>
+    ) -> Set<SuppressedMetric> {
         var result: Set<SuppressedMetric> = []
         for piece in trivia {
             guard case .lineComment(let text) = piece,
@@ -21,7 +32,7 @@ enum SuppressionParser {
             else { continue }
             result.formUnion(metrics)
         }
-        return result
+        return result.intersection(scope)
     }
 
     /// Parses a single `//`-prefixed comment. Returns `nil` when the comment
