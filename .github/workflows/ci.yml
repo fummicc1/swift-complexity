@@ -125,6 +125,34 @@ jobs:
             --toolchain-path "${TOOLCHAIN}" \
             --format json --recursive
 
+  action-test:
+    name: Action Test
+    strategy:
+      matrix:
+        os: [macos-15, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Run swift-complexity action
+        id: analysis
+        uses: ./
+        with:
+          # Pinned to a published release so the download path is deterministic;
+          # fail-on-threshold is off because this job verifies the action
+          # mechanics, not this repository's complexity.
+          version: "1.1.0"
+          fail-on-threshold: "false"
+
+      - name: Verify SARIF report structure
+        run: |
+          REPORT="${{ steps.analysis.outputs.report-file }}"
+          test -s "$REPORT" || { echo "Report is missing or empty: $REPORT"; exit 1; }
+          jq -e '.runs[0].tool.driver.name == "swift-complexity"' "$REPORT" > /dev/null
+          echo "SARIF report OK: $REPORT ($(jq '.runs[0].results | length' "$REPORT") results)"
+
   lint:
     name: Code Quality
     runs-on: macos-15
