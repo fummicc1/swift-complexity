@@ -155,6 +155,11 @@ jobs:
       - name: Run swift-complexity action
         id: analysis
         uses: ./
+        env:
+          # TEMPORARY, tied to the container above: the v1.1.0 binary embeds a
+          # runpath from its build machine, so point the loader at the
+          # container's Swift runtime. Harmless on macOS (dyld ignores it).
+          LD_LIBRARY_PATH: /usr/lib/swift/linux
         with:
           # Pinned to a published release so the download path is deterministic;
           # fail-on-threshold is off because this job verifies the action
