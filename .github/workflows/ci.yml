@@ -80,7 +80,9 @@ jobs:
           ls ${TOOLCHAIN_USR}/lib/swift || (echo "Swift lib directory not found!" && exit 1)
           test -d ${TOOLCHAIN_USR}/lib/swift/Block || (echo "Block header not found!" && exit 1)
           # --- end debug ---
-          swift build --configuration release \
+          # --static-swift-stdlib matches the release build so static linking
+          # breakage is caught on every PR, not at release time
+          swift build --configuration release --static-swift-stdlib \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
 
@@ -128,13 +130,27 @@ jobs:
   action-test:
     name: Action Test
     strategy:
+      fail-fast: false
       matrix:
-        os: [macos-15, ubuntu-22.04]
+        include:
+          - os: macos-15
+            container: ""
+          # TEMPORARY container: v1.1.0 Linux binaries are dynamically linked
+          # against the Swift runtime, so the test runs in a Swift image. Once
+          # a release built with --static-swift-stdlib ships (v1.2.0+), pin
+          # `version` to it and drop the container to prove runtime-free use.
+          - os: ubuntu-22.04
+            container: "swift:6.2-jammy"
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+
+      - name: Install prerequisites (container)
+        if: matrix.container != ''
+        run: apt-get update && apt-get install -y jq curl
 
       - name: Run swift-complexity action
         id: analysis
