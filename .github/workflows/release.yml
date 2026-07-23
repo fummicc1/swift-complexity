@@ -148,16 +148,21 @@ jobs:
               --arch ${{ matrix.arch }} \
               --product SwiftComplexityMCP
           else
-            # Linux: Get toolchain path for libdispatch headers
+            # Linux: Get toolchain path for libdispatch headers.
+            # --static-swift-stdlib makes the binaries self-contained so they
+            # run on machines without a Swift runtime (GitHub Action runners,
+            # bare containers, etc.).
             SWIFTLY_HOME="${HOME}/.local/share/swiftly"
             TOOLCHAIN_USR=$(ls -d ${SWIFTLY_HOME}/toolchains/*/usr 2>/dev/null | head -1)
             swift build \
               --configuration release \
+              --static-swift-stdlib \
               --product SwiftComplexityCLI \
               -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
               -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
             swift build \
               --configuration release \
+              --static-swift-stdlib \
               --product SwiftComplexityMCP \
               -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
               -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block

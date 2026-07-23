@@ -1,0 +1,191 @@
+name: "Swift Complexity Analysis"
+description: >-
+  Analyze Swift code complexity (cyclomatic, cognitive, LCOM4) with
+  swift-complexity and enforce thresholds in CI. Generates SARIF for
+  GitHub Code Scanning by default.
+author: "fummicc1"
+
+branding:
+  icon: "bar-chart-2"
+  color: "orange"
+
+inputs:
+  version:
+    description: >-
+      swift-complexity release version to use (e.g. "1.1.0"), or "latest"
+      to resolve the most recent release.
+    required: false
+    default: "latest"
+  paths:
+    description: >-
+      Space-separated files or directories to analyze, relative to the
+      workspace.
+    required: false
+    default: "Sources"
+  format:
+    description: "Output format: text, json, xml, xcode, or sarif."
+    required: false
+    default: "sarif"
+  output-file:
+    description: "File the report is written to."
+    required: false
+    default: "swift-complexity.sarif"
+  threshold:
+    description: >-
+      Complexity threshold passed as --threshold. Set to an empty string
+      to omit it (e.g. when thresholds come from a config file). Without
+      any threshold the SARIF report contains no results.
+    required: false
+    default: "10"
+  config:
+    description: "Path to a .swift-complexity.yml threshold config file."
+    required: false
+    default: ""
+  fail-on-threshold:
+    description: >-
+      Fail the step when the analysis exits with code 1 (threshold
+      exceeded). Set to "false" to continue anyway; exit codes other
+      than 0 and 1 always fail.
+    required: false
+    default: "true"
+  extra-args:
+    description: 'Additional CLI arguments (e.g. "--exclude Tests").'
+    required: false
+    default: ""
+  github-token:
+    description: "Token used to resolve the latest release via the GitHub API."
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  report-file:
+    description: "Path to the generated report file."
+    value: ${{ steps.run-analysis.outputs.report-file }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Resolve version
+      id: resolve-version
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        REQUESTED_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        if [[ "$REQUESTED_VERSION" == "latest" ]]; then
+          TAG=$(curl -fsSL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/fummicc1/swift-complexity/releases/latest" \
+            | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"v?([^"]+)".*/\1/')
+          if [[ -z "$TAG" ]]; then
+            echo "::error::Failed to resolve the latest swift-complexity release."
+            exit 1
+          fi
+          VERSION="$TAG"
+        else
+          VERSION="${REQUESTED_VERSION#v}"
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "Using swift-complexity $VERSION"
+
+    - name: Detect platform
+      id: detect-platform
+      shell: bash
+      run: |
+        set -euo pipefail
+        ARCH=$(uname -m)
+        case "$RUNNER_OS" in
+          macOS)
+            PLATFORM="macos"
+            [[ "$ARCH" == "x86_64" || "$ARCH" == "arm64" ]] || {
+              echo "::error::Unsupported macOS architecture: $ARCH"; exit 1;
+            }
+            ;;
+          Linux)
+            PLATFORM="linux"
+            if [[ "$ARCH" != "x86_64" ]]; then
+              echo "::error::Linux $ARCH is not supported; only x86_64 binaries are published."
+              exit 1
+            fi
+            ;;
+          *)
+            echo "::error::Unsupported runner OS: $RUNNER_OS"; exit 1
+            ;;
+        esac
+        echo "platform=$PLATFORM" >> "$GITHUB_OUTPUT"
+        echo "arch=$ARCH" >> "$GITHUB_OUTPUT"
+
+    - name: Download and verify binary
+      id: download
+      shell: bash
+      env:
+        VERSION: ${{ steps.resolve-version.outputs.version }}
+        PLATFORM: ${{ steps.detect-platform.outputs.platform }}
+        ARCH: ${{ steps.detect-platform.outputs.arch }}
+      run: |
+        set -euo pipefail
+        ASSET="SwiftComplexityCLI-${VERSION}-${PLATFORM}-${ARCH}.tar.gz"
+        BASE_URL="https://github.com/fummicc1/swift-complexity/releases/download/v${VERSION}"
+        WORK_DIR="${RUNNER_TEMP}/swift-complexity-action"
+        mkdir -p "$WORK_DIR"
+        cd "$WORK_DIR"
+
+        curl -fsSL -o "$ASSET" "${BASE_URL}/${ASSET}"
+        curl -fsSL -o "${ASSET}.sha256" "${BASE_URL}/${ASSET}.sha256"
+
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
+          shasum -a 256 -c "${ASSET}.sha256"
+        else
+          sha256sum -c "${ASSET}.sha256"
+        fi
+
+        tar -xzf "$ASSET"
+        BINARY="${WORK_DIR}/SwiftComplexityCLI-${VERSION}-${PLATFORM}-${ARCH}/SwiftComplexityCLI"
+        if [[ ! -x "$BINARY" ]]; then
+          echo "::error::Binary not found at expected path inside the archive: $BINARY"
+          exit 1
+        fi
+        echo "binary=$BINARY" >> "$GITHUB_OUTPUT"
+
+    - name: Run analysis
+      id: run-analysis
+      shell: bash
+      env:
+        BINARY: ${{ steps.download.outputs.binary }}
+        PATHS: ${{ inputs.paths }}
+        FORMAT: ${{ inputs.format }}
+        OUTPUT_FILE: ${{ inputs.output-file }}
+        THRESHOLD: ${{ inputs.threshold }}
+        CONFIG: ${{ inputs.config }}
+        FAIL_ON_THRESHOLD: ${{ inputs.fail-on-threshold }}
+        EXTRA_ARGS: ${{ inputs.extra-args }}
+      run: |
+        set -uo pipefail
+        ARGS=()
+        # Intentionally unquoted expansions: paths and extra-args are
+        # space-separated lists by contract.
+        for p in $PATHS; do ARGS+=("$p"); done
+        ARGS+=(--recursive --format "$FORMAT")
+        [[ -n "$THRESHOLD" ]] && ARGS+=(--threshold "$THRESHOLD")
+        [[ -n "$CONFIG" ]] && ARGS+=(--config "$CONFIG")
+        for a in $EXTRA_ARGS; do ARGS+=("$a"); done
+
+        set +e
+        "$BINARY" "${ARGS[@]}" > "$OUTPUT_FILE"
+        EXIT_CODE=$?
+        set -e
+
+        echo "report-file=$OUTPUT_FILE" >> "$GITHUB_OUTPUT"
+
+        if [[ $EXIT_CODE -eq 1 ]]; then
+          if [[ "$FAIL_ON_THRESHOLD" == "true" ]]; then
+            echo "::error::Complexity threshold exceeded (see $OUTPUT_FILE)."
+            exit 1
+          fi
+          echo "Complexity threshold exceeded, continuing because fail-on-threshold is false."
+        elif [[ $EXIT_CODE -ne 0 ]]; then
+          echo "::error::swift-complexity failed with exit code $EXIT_CODE."
+          exit "$EXIT_CODE"
+        fi

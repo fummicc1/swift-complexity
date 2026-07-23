@@ -85,6 +85,35 @@ swift run SwiftComplexityCLI Sources --threshold 15 --recursive
 # Exit code 1: One or more functions exceed threshold
 ```
 
+### GitHub Action
+
+Add a complexity gate with inline PR annotations in one step (requires
+`v1.2.0` or later):
+
+```yaml
+permissions:
+  contents: read
+  security-events: write
+
+steps:
+  - uses: actions/checkout@v5
+
+  - name: Analyze complexity
+    id: analysis
+    uses: fummicc1/swift-complexity@v1.2.0
+    with:
+      paths: Sources
+      threshold: "10"
+
+  - uses: github/codeql-action/upload-sarif@v3
+    if: always()
+    with:
+      sarif_file: ${{ steps.analysis.outputs.report-file }}
+```
+
+See the [CI Integration guide](docs/user-guide/ci-integration.md) for all
+inputs, report-only setups, and a plain-CLI alternative.
+
 ### Per-Type Thresholds
 
 Assign different thresholds per nominal type (class/struct/enum/actor and extensions)
@@ -163,6 +192,7 @@ See the [Usage Guide](docs/user-guide/usage.md#per-type-complexity-thresholds) f
 - **[User Guide](docs/user-guide/)**: Installation, usage, and examples
 - **[Complexity Metrics](docs/user-guide/complexity-metrics.md)**: Detailed metric explanations and examples
 - **[Output Formats](docs/user-guide/output-formats.md)**: Text, JSON, XML, Xcode diagnostics, and SARIF format specifications
+- **[CI Integration](docs/user-guide/ci-integration.md)**: GitHub Action and Code Scanning setup
 - **[Development Guide](docs/development/DEVELOPMENT.md)**: Setup for contributors
 - **[Debug Website](debug-website/)**: Web-based interactive analyzer documentation
 
