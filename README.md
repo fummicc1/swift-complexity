@@ -100,7 +100,7 @@ steps:
 
   - name: Analyze complexity
     id: analysis
-    uses: fummicc1/swift-complexity@v1.2.0
+    uses: fummicc1/swift-complexity@v1
     with:
       paths: Sources
       threshold: "10"

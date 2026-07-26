@@ -26,7 +26,7 @@ jobs:
 
       - name: Analyze complexity
         id: analysis
-        uses: fummicc1/swift-complexity@v1.2.0
+        uses: fummicc1/swift-complexity@v1
         with:
           paths: Sources
           threshold: "10"
@@ -42,8 +42,10 @@ That's it. Pull requests that introduce functions above the threshold now
 fail the check, and each violation appears as an inline annotation on the
 diff and in the repository's Security tab.
 
-> **Note**: The action requires tag `v1.2.0` or later — earlier releases do
-> not contain `action.yml`.
+> **Note**: The `v1` tag tracks the latest stable `v1.x` release. Pin an
+> exact tag (e.g. `fummicc1/swift-complexity@v1.2.0`) if you prefer fully
+> reproducible workflows. The action requires `v1.2.0` or later — earlier
+> releases do not contain `action.yml`.
 
 ## Action Inputs
 
