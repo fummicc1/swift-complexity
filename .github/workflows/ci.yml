@@ -132,47 +132,43 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-15
-            container: ""
-          # TEMPORARY container: v1.1.0 Linux binaries are dynamically linked
-          # against the Swift runtime, so the test runs in a Swift image. Once
-          # a release built with --static-swift-stdlib ships (v1.2.0+), pin
-          # `version` to it and drop the container to prove runtime-free use.
-          - os: ubuntu-22.04
-            container: "swift:6.2-jammy"
+        os: [macos-15, ubuntu-22.04]
+    # Bare runners on purpose: this proves the action needs no Swift
+    # toolchain, which requires release binaries built with
+    # --static-swift-stdlib (v1.2.0+) on Linux.
     runs-on: ${{ matrix.os }}
-    container: ${{ matrix.container }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Install prerequisites (container)
-        if: matrix.container != ''
-        run: apt-get update && apt-get install -y jq curl
-
-      - name: Run swift-complexity action
+      - name: Run swift-complexity action (local checkout)
         id: analysis
         uses: ./
-        env:
-          # TEMPORARY, tied to the container above: the v1.1.0 binary embeds a
-          # runpath from its build machine, so point the loader at the
-          # container's Swift runtime. Harmless on macOS (dyld ignores it).
-          LD_LIBRARY_PATH: /usr/lib/swift/linux
         with:
           # Pinned to a published release so the download path is deterministic;
           # fail-on-threshold is off because this job verifies the action
           # mechanics, not this repository's complexity.
-          version: "1.1.0"
+          version: "1.2.0"
+          fail-on-threshold: "false"
+
+      - name: Run swift-complexity action (released tag)
+        id: analysis-tag
+        # Consumes the action the way users do - resolved from the tag,
+        # not the local checkout.
+        uses: fummicc1/swift-complexity@v1.2.0
+        with:
+          version: "1.2.0"
+          output-file: swift-complexity-tag.sarif
           fail-on-threshold: "false"
 
       - name: Verify SARIF report structure
         run: |
-          REPORT="${{ steps.analysis.outputs.report-file }}"
-          test -s "$REPORT" || { echo "Report is missing or empty: $REPORT"; exit 1; }
-          jq -e '.runs[0].tool.driver.name == "swift-complexity"' "$REPORT" > /dev/null
-          echo "SARIF report OK: $REPORT ($(jq '.runs[0].results | length' "$REPORT") results)"
+          for REPORT in "${{ steps.analysis.outputs.report-file }}" "${{ steps.analysis-tag.outputs.report-file }}"; do
+            test -s "$REPORT" || { echo "Report is missing or empty: $REPORT"; exit 1; }
+            jq -e '.runs[0].tool.driver.name == "swift-complexity"' "$REPORT" > /dev/null
+            echo "SARIF report OK: $REPORT ($(jq '.runs[0].results | length' "$REPORT") results)"
+          done
 
   lint:
     name: Code Quality
