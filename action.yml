@@ -1,8 +1,8 @@
 name: "Swift Complexity Analysis"
+# Marketplace requires the description to be 125 characters or fewer.
 description: >-
-  Analyze Swift code complexity (cyclomatic, cognitive, LCOM4) with
-  swift-complexity and enforce thresholds in CI. Generates SARIF for
-  GitHub Code Scanning by default.
+  Analyze Swift code complexity (cyclomatic, cognitive, LCOM4), enforce
+  thresholds in CI, and generate SARIF for Code Scanning
 author: "fummicc1"
 
 branding:
