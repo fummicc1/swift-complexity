@@ -142,21 +142,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Run swift-complexity action (local checkout)
+      - name: Run swift-complexity action (local checkout, latest version)
         id: analysis
         uses: ./
         with:
-          # Pinned to a published release so the download path is deterministic;
-          # fail-on-threshold is off because this job verifies the action
-          # mechanics, not this repository's complexity.
-          version: "1.2.0"
+          # Default `version: latest` on purpose: this step runs the action
+          # code under review, so the latest-release lookup path is covered
+          # by CI before every merge. fail-on-threshold is off because this
+          # job verifies the action mechanics, not this repo's complexity.
           fail-on-threshold: "false"
 
       - name: Run swift-complexity action (released tag)
         id: analysis-tag
-        # Consumes the action the way users do - resolved from the tag,
-        # not the local checkout.
-        uses: fummicc1/swift-complexity@v1.2.0
+        # Consumes the action the way users do - resolved from the v1 tag,
+        # not the local checkout. The binary version stays pinned so this
+        # step is deterministic regardless of newer releases.
+        uses: fummicc1/swift-complexity@v1
         with:
           version: "1.2.0"
           output-file: swift-complexity-tag.sarif

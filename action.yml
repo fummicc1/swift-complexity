@@ -74,11 +74,15 @@ runs:
       run: |
         set -euo pipefail
         if [[ "$REQUESTED_VERSION" == "latest" ]]; then
-          TAG=$(curl -fsSL \
+          # Buffer the whole response before parsing: piping curl straight
+          # into `grep -m1` makes grep close the pipe on the first match,
+          # which kills curl with a write error (exit 23) under pipefail.
+          RESPONSE=$(curl -fsSL \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/fummicc1/swift-complexity/releases/latest" \
-            | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"v?([^"]+)".*/\1/')
+            "https://api.github.com/repos/fummicc1/swift-complexity/releases/latest")
+          TAG=$(grep -m1 '"tag_name"' <<<"$RESPONSE" \
+            | sed -E 's/.*"tag_name": *"v?([^"]+)".*/\1/')
           if [[ -z "$TAG" ]]; then
             echo "::error::Failed to resolve the latest swift-complexity release."
             exit 1
