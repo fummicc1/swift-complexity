@@ -89,6 +89,52 @@ import Testing
             return try #require(normalized(dictionary) as? NSDictionary)
         }
 
+        /// Reports the exact key paths that differ, because a bare
+        /// NSDictionary inequality is undebuggable from CI logs.
+        private func structuralDiff(
+            _ lhs: Any, _ rhs: Any, path: String = "root", into diffs: inout [String]
+        ) {
+            guard diffs.count < 10 else { return }
+            if let l = lhs as? [String: Any], let r = rhs as? [String: Any] {
+                for key in Set(l.keys).union(r.keys).sorted() {
+                    switch (l[key], r[key]) {
+                    case (nil, let value?):
+                        diffs.append("\(path).\(key): missing in output, golden=\(value)")
+                    case (let value?, nil):
+                        diffs.append("\(path).\(key): output=\(value), missing in golden")
+                    case (let lv?, let rv?):
+                        structuralDiff(lv, rv, path: "\(path).\(key)", into: &diffs)
+                    case (nil, nil):
+                        break
+                    }
+                }
+                return
+            }
+            if let l = lhs as? [Any], let r = rhs as? [Any] {
+                if l.count != r.count {
+                    diffs.append("\(path): array count output=\(l.count) golden=\(r.count)")
+                    return
+                }
+                for (offset, pair) in zip(l, r).enumerated() {
+                    structuralDiff(pair.0, pair.1, path: "\(path)[\(offset)]", into: &diffs)
+                }
+                return
+            }
+            if !(lhs as AnyObject).isEqual(rhs as AnyObject) {
+                diffs.append("\(path): output=\(lhs) golden=\(rhs)")
+            }
+        }
+
+        private func expectMatchesGolden(_ output: String, _ goldenName: String) throws {
+            let canonical = try canonicalize(output)
+            let golden = try loadGolden(goldenName)
+            if canonical != golden {
+                var diffs: [String] = []
+                structuralDiff(canonical, golden, into: &diffs)
+                Issue.record("golden mismatch (\(goldenName)): \(diffs.joined(separator: " | "))")
+            }
+        }
+
         @Test("Plain JSON output matches the pre-coupling golden")
         func plainOutputMatchesGolden() async throws {
             let analyzer = try ComplexityAnalyzer()
@@ -99,7 +145,7 @@ import Testing
             let output = OutputFormatter().format(
                 results: results, format: .json, options: OutputOptions())
 
-            #expect(try canonicalize(output) == loadGolden("complexity_plain"))
+            try expectMatchesGolden(output, "complexity_plain")
         }
 
         @Test("LCOM4 JSON output matches the pre-coupling golden")
@@ -126,7 +172,7 @@ import Testing
             let output = OutputFormatter().format(
                 results: results, format: .json, options: OutputOptions(showLCOM4: true))
 
-            #expect(try canonicalize(output) == loadGolden("complexity_lcom4"))
+            try expectMatchesGolden(output, "complexity_lcom4")
         }
     }
 
