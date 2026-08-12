@@ -4,14 +4,15 @@ A command-line tool to analyze Swift code complexity and quality metrics using s
 
 ## Features
 
-- **Multiple Complexity Metrics**: Supports cyclomatic complexity, cognitive complexity, and LCOM4 cohesion analysis
+- **Multiple Complexity Metrics**: Supports cyclomatic complexity, cognitive complexity, LCOM4 cohesion, and type coupling analysis
 - **LCOM4 Class Cohesion**: High-precision class cohesion measurement using IndexStore-DB semantic analysis
+- **Type Coupling Metrics**: Semantic fan-in / fan-out / instability per type, plus a hotspot ranking that orders complexity violations by their blast radius ([details](docs/user-guide/coupling-metrics.md))
 - **Web-based Debug Interface**: Interactive browser-based complexity analyzer ([Try it online](https://swift-complexity.fummicc1.dev))
 - **Xcode Integration**: Seamless integration with Xcode via Build Tool Plugin for complexity feedback during build phase
 - **Xcode Diagnostics**: Display complexity warnings and errors directly in Xcode editor with accurate line numbers
 - **Configurable Thresholds**: Set custom complexity thresholds via Xcode Build Settings or environment variables
 - **Per-Type Thresholds**: Assign different thresholds to types by name (prefix/suffix) via a `.swift-complexity.yml` config — e.g. stricter limits for `*Repository`, looser for `*UseCase`
-- **Inline Suppression**: Exempt a specific function or type from threshold checks with a `// swift-complexity:disable` comment, optionally scoped to `cyclomatic`, `cognitive`, or `lcom4`
+- **Inline Suppression**: Exempt a specific function or type from threshold checks with a `// swift-complexity:disable` comment, optionally scoped to `cyclomatic`, `cognitive`, `lcom4`, or `coupling`
 - **Exit Code Integration**: Returns exit code 1 when complexity thresholds are exceeded, perfect for CI/CD pipelines
 - **Multiple Output Formats**: Text, JSON, XML, Xcode diagnostics, and SARIF output for different use cases
 - **Flexible Analysis**: Single files, directories, or recursive directory analysis
@@ -68,6 +69,9 @@ swift run SwiftComplexityCLI Sources --format sarif --threshold 10 --recursive >
 # LCOM4 class cohesion analysis (requires swift build first)
 swift build  # Generate index
 swift run SwiftComplexityCLI Sources --lcom4 --index-store-path .build/debug/index/store
+
+# Type coupling analysis: fan-in / fan-out / instability (requires swift build first)
+swift run SwiftComplexityCLI Sources --coupling --index-store-path .build/debug/index/store --recursive
 ```
 
 ## CLI Integration
@@ -186,6 +190,12 @@ See the [Usage Guide](docs/user-guide/usage.md#per-type-complexity-thresholds) f
   - **High Precision**: Semantic analysis powered by IndexStore-DB
   - **Implicit self Detection**: Automatically detects both `self.property` and `property` accesses
   - **Requirements**: Requires `swift build` to generate index data
+- **Type Coupling (fan-in / fan-out / instability)**: Measures how tangled types are with each other over the project's semantic reference graph
+  - **Fan-out**: How many other project types a type depends on (fragility)
+  - **Fan-in**: How many project types depend on it (blast radius)
+  - **Instability**: Martin's fan-out / (fan-in + fan-out) ratio
+  - **Hotspots**: Ranks complexity violations by their enclosing type's fan-in
+  - **Requirements**: Requires `swift build` to generate index data ([details](docs/user-guide/coupling-metrics.md))
 
 ## Documentation
 
