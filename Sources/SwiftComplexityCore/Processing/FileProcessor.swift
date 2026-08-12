@@ -12,10 +12,20 @@ public struct ProcessingOptions: Sendable {
     public let excludePatterns: [String]
     public let verbose: Bool
 
-    public init(recursive: Bool = false, excludePatterns: [String] = [], verbose: Bool = false) {
+    /// Enables the whole-project coupling pass after per-file analysis.
+    /// Requires the processor's analyzer to hold an index store.
+    public let couplingEnabled: Bool
+
+    public init(
+        recursive: Bool = false,
+        excludePatterns: [String] = [],
+        verbose: Bool = false,
+        couplingEnabled: Bool = false
+    ) {
         self.recursive = recursive
         self.excludePatterns = excludePatterns
         self.verbose = verbose
+        self.couplingEnabled = couplingEnabled
     }
 }
 
@@ -24,6 +34,7 @@ public enum FileProcessorError: Error, LocalizedError {
     case fileNotReadable(String)
     case parseError(String, underlying: Error)
     case noSwiftFiles
+    case indexStoreRequired
 
     public var errorDescription: String? {
         switch self {
@@ -35,6 +46,11 @@ public enum FileProcessorError: Error, LocalizedError {
             return "Parse error in \(path): \(underlying.localizedDescription)"
         case .noSwiftFiles:
             return "No Swift files found"
+        case .indexStoreRequired:
+            return """
+                Coupling analysis requires an index store.
+                Pass --index-store-path (e.g. .build/debug/index/store) after running 'swift build'.
+                """
         }
     }
 }
@@ -42,6 +58,10 @@ public enum FileProcessorError: Error, LocalizedError {
 public actor FileProcessor: FileProcessing {
     private let analyzer: ComplexityAnalyzer
     private let fileManager: FileManager
+
+    /// Attribution accounting of the most recent coupling pass, for the CLI's
+    /// stderr diagnostics. `nil` until a coupling-enabled run completes.
+    public private(set) var lastCouplingDiagnostics: CouplingDiagnostics?
 
     /// Initialize with a custom analyzer
     public init(analyzer: ComplexityAnalyzer) {
@@ -80,23 +100,57 @@ public actor FileProcessor: FileProcessing {
             print("Found \(swiftFiles.count) Swift files to analyze")
         }
 
-        return try await withThrowingTaskGroup(of: ComplexityResult?.self) { group in
+        let (results, typeRanges) = try await withThrowingTaskGroup(
+            of: (result: ComplexityResult?, ranges: TypeRangeIndex?, filePath: String).self
+        ) { group in
             var results: [ComplexityResult] = []
+            var typeRanges: [String: TypeRangeIndex] = [:]
 
             for filePath in swiftFiles {
                 group.addTask {
-                    try await self.processFile(at: filePath, verbose: options.verbose)
+                    try await self.processFile(
+                        at: filePath,
+                        verbose: options.verbose,
+                        collectTypeRanges: options.couplingEnabled)
                 }
             }
 
-            for try await result in group {
-                if let result = result {
+            for try await item in group {
+                if let result = item.result {
                     results.append(result)
                 }
+                if let ranges = item.ranges {
+                    typeRanges[item.filePath] = ranges
+                }
             }
 
-            return results.sorted { $0.filePath < $1.filePath }
+            return (results.sorted { $0.filePath < $1.filePath }, typeRanges)
         }
+
+        guard options.couplingEnabled else { return results }
+        return try await runCouplingPass(
+            results: results, analyzedFiles: swiftFiles, typeRanges: typeRanges)
+    }
+
+    /// The whole-project coupling pass: one index scan over all analyzed
+    /// files, then distribution of each type's metrics to its defining file.
+    private func runCouplingPass(
+        results: [ComplexityResult],
+        analyzedFiles: [String],
+        typeRanges: [String: TypeRangeIndex]
+    ) async throws -> [ComplexityResult] {
+        guard let indexStore = analyzer.sharedIndexStore else {
+            throw FileProcessorError.indexStoreRequired
+        }
+
+        let calculator = TypeCouplingCalculator(indexStore: indexStore)
+        let (byFile, diagnostics) = await calculator.calculate(
+            analyzedFiles: analyzedFiles, typeRanges: typeRanges)
+        lastCouplingDiagnostics = diagnostics
+
+        // Every result gains coupling fields; an empty array (not nil) marks
+        // "coupling ran, this file defines no types".
+        return results.map { $0.attaching(typeCouplings: byFile[$0.filePath] ?? []) }
     }
 
     private func collectSwiftFiles(from paths: [String], options: ProcessingOptions) async throws
@@ -192,7 +246,9 @@ public actor FileProcessor: FileProcessing {
         }
     }
 
-    private func processFile(at filePath: String, verbose: Bool) async throws -> ComplexityResult? {
+    private func processFile(
+        at filePath: String, verbose: Bool, collectTypeRanges: Bool
+    ) async throws -> (result: ComplexityResult?, ranges: TypeRangeIndex?, filePath: String) {
         do {
             if verbose {
                 print("Analyzing: \(filePath)")
@@ -201,7 +257,13 @@ public actor FileProcessor: FileProcessing {
             let fileContent = try String(contentsOfFile: filePath)
             let sourceFile = Parser.parse(source: fileContent)
 
-            return try await analyzer.analyze(sourceFile: sourceFile, filePath: filePath)
+            let result = try await analyzer.analyze(sourceFile: sourceFile, filePath: filePath)
+            // Collected during the parallel phase to reuse the parsed tree;
+            // the coupling pass itself must wait for every file.
+            let ranges =
+                collectTypeRanges
+                ? TypeRangeCollector.collect(from: sourceFile, filePath: filePath) : nil
+            return (result, ranges, filePath)
 
         } catch {
             if verbose {

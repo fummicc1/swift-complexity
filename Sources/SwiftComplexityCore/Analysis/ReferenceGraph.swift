@@ -53,22 +53,30 @@ struct ReferenceGraph: Sendable {
     func fanIn(of usr: String) -> Int { inEdges[usr]?.count ?? 0 }
 }
 
-/// Attribution accounting for one build. Every reference lands in exactly one
-/// attributed/dropped bucket, so:
+/// Attribution accounting for one coupling run. Every reference lands in
+/// exactly one attributed/dropped bucket, so:
 /// refsTotal == attributedByContainedBy + attributedByBaseOf
 ///            + attributedByLocation + droppedNonProjectSymbol
 ///            + droppedTypealias + droppedUnattributable.
 /// Self-references are attributed but produce no edge; they are additionally
 /// counted in `selfReferencesSkipped`.
-struct CouplingDiagnostics: Sendable, Equatable {
-    var refsTotal = 0
-    var attributedByContainedBy = 0
-    var attributedByBaseOf = 0
-    var attributedByLocation = 0
-    var droppedNonProjectSymbol = 0
-    var droppedTypealias = 0
-    var droppedUnattributable = 0
-    var selfReferencesSkipped = 0
+///
+/// Public so the CLI can report attribution quality to stderr; construction
+/// and mutation stay internal to the analysis.
+public struct CouplingDiagnostics: Sendable, Equatable {
+    public internal(set) var refsTotal = 0
+    public internal(set) var attributedByContainedBy = 0
+    public internal(set) var attributedByBaseOf = 0
+    public internal(set) var attributedByLocation = 0
+    public internal(set) var droppedNonProjectSymbol = 0
+    public internal(set) var droppedTypealias = 0
+    public internal(set) var droppedUnattributable = 0
+    public internal(set) var selfReferencesSkipped = 0
+
+    /// References that resolved to a source type (self-references included).
+    public var attributedTotal: Int {
+        attributedByContainedBy + attributedByBaseOf + attributedByLocation
+    }
 }
 
 // MARK: - Builder
