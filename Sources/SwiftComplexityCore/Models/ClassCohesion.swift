@@ -5,6 +5,10 @@ public enum NominalType: String, Codable, Sendable {
     case `class`
     case `struct`
     case actor
+    // Used by coupling metrics only: LCOM4 analyzes class/struct/actor and
+    // never produces these cases, keeping existing cohesion output unchanged.
+    case `enum`
+    case `protocol`
 }
 
 /// Classification of cohesion levels

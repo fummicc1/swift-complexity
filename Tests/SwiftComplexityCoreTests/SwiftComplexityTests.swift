@@ -54,6 +54,17 @@ struct DataModelTests {
         #expect(function.location.line == 1)
     }
 
+    @Test("NominalType coupling-only cases round-trip and keep raw values")
+    func nominalTypeCouplingCases() throws {
+        // enum/protocol exist for coupling metrics; LCOM4 must never emit them.
+        #expect(NominalType.enum.rawValue == "enum")
+        #expect(NominalType.protocol.rawValue == "protocol")
+        for kind in [NominalType.enum, .protocol] {
+            let data = try JSONEncoder().encode(kind)
+            #expect(try JSONDecoder().decode(NominalType.self, from: data) == kind)
+        }
+    }
+
     @Test("FileSummary with empty functions")
     func fileSummaryEmptyFunctions() {
         // When
