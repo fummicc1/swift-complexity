@@ -49,7 +49,10 @@ struct OutputFormatterCouplingTests {
     @Test("Empty coupling arrays render no table (coupling ran, no types)")
     func emptyCouplingsNoTable() {
         let text = OutputFormatter().format(
-            results: [result(functions: [function("f", in: nil, cyclomatic: 1, cognitive: 1)], couplings: [])],
+            results: [
+                result(
+                    functions: [function("f", in: nil, cyclomatic: 1, cognitive: 1)], couplings: [])
+            ],
             format: .text, options: OutputOptions())
         #expect(!text.contains("Type Coupling:"))
     }

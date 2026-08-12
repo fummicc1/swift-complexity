@@ -101,7 +101,8 @@ struct GoldenCompatibilityTests {
         // LCOM4 resolves through the deterministic syntax fallback — exactly
         // how the golden was generated. `swift test` always builds first, so
         // the debug index store is present in every supported flow.
-        let indexStore = repoRoot
+        let indexStore =
+            repoRoot
             .appendingPathComponent(".build")
             .appendingPathComponent("debug")
             .appendingPathComponent("index")

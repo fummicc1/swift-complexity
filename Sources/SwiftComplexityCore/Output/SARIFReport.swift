@@ -139,14 +139,18 @@ extension OutputFormatter {
                 id: SARIFConstants.fanOutRuleId,
                 name: "TypeFanOut",
                 shortDescription: SARIFMessage(
-                    text: "Types should not depend on more types than the configured fan-out threshold"),
+                    text:
+                        "Types should not depend on more types than the configured fan-out threshold"
+                ),
                 helpUri: SARIFConstants.metricsHelpURI
             ),
             SARIFRule(
                 id: SARIFConstants.fanInRuleId,
                 name: "TypeFanIn",
                 shortDescription: SARIFMessage(
-                    text: "Types should not be depended upon by more types than the configured fan-in threshold"),
+                    text:
+                        "Types should not be depended upon by more types than the configured fan-in threshold"
+                ),
                 helpUri: SARIFConstants.metricsHelpURI
             ),
         ]

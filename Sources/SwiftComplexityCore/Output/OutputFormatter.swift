@@ -152,7 +152,8 @@ public class OutputFormatter {
         guard !hotspots.isEmpty else { return nil }
 
         var output = "Hotspots (complexity violations x fan-in):\n"
-        let separator = "+----+----------------------+----------------------+--------+-------+-------+\n"
+        let separator =
+            "+----+----------------------+----------------------+--------+-------+-------+\n"
         output += "| #  | Function             | Type                 | Fan-In | Cyclo | Cogn  |\n"
         output += separator
         for (rank, hotspot) in hotspots.enumerated() {

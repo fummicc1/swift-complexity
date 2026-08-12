@@ -54,9 +54,10 @@ struct HotspotRankerTests {
         let hotspots = HotspotRanker.rank(
             results: results, configuration: plainThreshold, fallbackThreshold: 10)
 
-        #expect(hotspots.map(\.function.name) == [
-            "highFanInHighCognitive", "highFanInLowCognitive", "lowFanInHighCognitive",
-        ])
+        #expect(
+            hotspots.map(\.function.name) == [
+                "highFanInHighCognitive", "highFanInLowCognitive", "lowFanInHighCognitive",
+            ])
         #expect(hotspots[0].typeFanIn == 9)
     }
 

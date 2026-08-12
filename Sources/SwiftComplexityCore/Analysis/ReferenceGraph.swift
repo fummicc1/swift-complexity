@@ -292,7 +292,8 @@ enum ReferenceGraphBuilder {
         named name: String, inFile file: String, nodes: [String: ReferenceGraph.Node]
     ) -> String? {
         let exact = nodes.values.filter { $0.name == name }
-        let candidates = exact.isEmpty
+        let candidates =
+            exact.isEmpty
             ? nodes.values.filter { $0.name.hasSuffix(".\(name)") }
             : exact
         let sameFile = candidates.filter { $0.file == file }

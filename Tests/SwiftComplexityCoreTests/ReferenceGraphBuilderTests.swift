@@ -163,10 +163,11 @@ struct ReferenceGraphBuilderTests {
 
     @Test("Repeated references to one type count once (distinct types)")
     func distinctCounting() {
-        let records = basicScenario + [
-            ref("s:B", at: (51, 1), containedBy: "s:A.m"),
-            ref("s:B", at: (52, 1), containedBy: "s:A.m"),
-        ]
+        let records =
+            basicScenario + [
+                ref("s:B", at: (51, 1), containedBy: "s:A.m"),
+                ref("s:B", at: (52, 1), containedBy: "s:A.m"),
+            ]
         let (graph, _) = build(records)
         #expect(graph.fanOut(of: "s:A") == 1)
         #expect(graph.fanIn(of: "s:B") == 1)
@@ -243,10 +244,11 @@ struct ReferenceGraphBuilderTests {
 
     @Test("References to symbols outside the analyzed files are dropped")
     func nonProjectSymbolDropped() {
-        let records = basicScenario + [
-            // No definition record exists for String: not a project symbol.
-            ref("s:Swift.String", at: (60, 1), containedBy: "s:A.m")
-        ]
+        let records =
+            basicScenario + [
+                // No definition record exists for String: not a project symbol.
+                ref("s:Swift.String", at: (60, 1), containedBy: "s:A.m")
+            ]
         let (graph, diagnostics) = build(records)
         #expect(diagnostics.droppedNonProjectSymbol == 1)
         #expect(graph.fanOut(of: "s:A") == 1)  // only the edge to B
