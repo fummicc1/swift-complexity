@@ -36,6 +36,7 @@ NORM='walk(if type=="object" and has("suppressedMetrics") and (.suppressedMetric
   | sed "s|$(pwd)/||g" | jq -S "$NORM" > "$FIX/golden/complexity_lcom4.json"
 ```
 
-Note: the fixture inputs are the `.swift` files directly under `Fixtures/` at
-generation time. New fixtures added for later features must live in
-subdirectories that the golden test excludes, or the goldens become stale.
+Note: `GoldenCompatibilityTests` pins the exact fixture file list that existed
+at generation time, so new fixture files added for later features do not
+affect this test. Extending the pinned list requires regenerating the goldens
+from a pre-change commit.
