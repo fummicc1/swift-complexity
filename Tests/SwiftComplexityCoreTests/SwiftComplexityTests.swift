@@ -65,6 +65,54 @@ struct DataModelTests {
         }
     }
 
+    @Test("TypeCoupling derives instability from the counts")
+    func typeCouplingInstability() {
+        let location = SourceLocation(line: 1, column: 1)
+        // 2 / (1 + 2) = 0.666..., and isolated types have no defined ratio.
+        let coupled = TypeCoupling(
+            name: "A", kind: .struct, fanIn: 1, fanOut: 2, location: location)
+        #expect(coupled.instability != nil)
+        #expect(abs(coupled.instability! - 2.0 / 3.0) < 0.0001)
+        let entryPoint = TypeCoupling(
+            name: "B", kind: .class, fanIn: 0, fanOut: 5, location: location)
+        #expect(entryPoint.instability == 1.0)
+        let isolated = TypeCoupling(
+            name: "C", kind: .enum, fanIn: 0, fanOut: 0, location: location)
+        #expect(isolated.instability == nil)
+    }
+
+    @Test("TypeCoupling round-trips through Codable, nil instability omits the key")
+    func typeCouplingCodable() throws {
+        let coupling = TypeCoupling(
+            name: "Isolated", kind: .protocol, fanIn: 0, fanOut: 0,
+            location: SourceLocation(line: 3, column: 1),
+            suppressedMetrics: [.coupling])
+        let data = try JSONEncoder().encode(coupling)
+        let decoded = try JSONDecoder().decode(TypeCoupling.self, from: data)
+        #expect(decoded == coupling)
+        // Optionals encode via encodeIfPresent: an absent key keeps the JSON
+        // schema additive for consumers that reject unknown null values.
+        let json = String(decoding: data, as: UTF8.self)
+        #expect(!json.contains("instability"))
+    }
+
+    @Test("CouplingSummary aggregates and stays safe on empty input")
+    func couplingSummaryAggregation() {
+        let location = SourceLocation(line: 1, column: 1)
+        let types = [
+            TypeCoupling(name: "A", kind: .struct, fanIn: 4, fanOut: 1, location: location),
+            TypeCoupling(name: "B", kind: .class, fanIn: 0, fanOut: 7, location: location),
+        ]
+        let summary = CouplingSummary(types: types)
+        #expect(summary.totalTypes == 2)
+        #expect(summary.maxFanIn == 4)
+        #expect(summary.maxFanOut == 7)
+        #expect(abs(summary.averageFanOut - 4.0) < 0.0001)
+        let empty = CouplingSummary(types: [])
+        #expect(empty.totalTypes == 0)
+        #expect(empty.averageFanOut == 0.0)
+    }
+
     @Test("FileSummary with empty functions")
     func fileSummaryEmptyFunctions() {
         // When
