@@ -296,8 +296,8 @@ public struct ComplexityCommand: AsyncParsableCommand {
                         return "cyclomatic (\(function.cyclomaticComplexity))"
                     case .cognitive:
                         return "cognitive (\(function.cognitiveComplexity))"
-                    case .lcom4:
-                        return nil  // type-level metric, never present on a function
+                    case .lcom4, .coupling:
+                        return nil  // type-level metrics, never present on a function
                     }
                 }
                 lines.append(

@@ -65,6 +65,10 @@ class NominalTypeDetector: SyntaxVisitor {
         return detectedTypes
     }
 
+    // The scope is pinned to [.lcom4] rather than SuppressedMetric.typeLevel:
+    // ClassCohesion must keep reporting only LCOM4 suppression so that output
+    // without --coupling stays identical to previous releases. Coupling
+    // suppression is collected independently by TypeRangeCollector.
     override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
         let name = node.name.text
         let location = extractLocation(from: node.classKeyword)
@@ -75,7 +79,7 @@ class NominalTypeDetector: SyntaxVisitor {
             members: node.memberBlock.members,
             location: location,
             suppressedMetrics: SuppressionParser.suppressedMetrics(
-                in: node.leadingTrivia, applicableTo: SuppressedMetric.typeLevel)
+                in: node.leadingTrivia, applicableTo: [.lcom4])
         )
 
         detectedTypes.append(detectedNominal)
@@ -93,7 +97,7 @@ class NominalTypeDetector: SyntaxVisitor {
             members: node.memberBlock.members,
             location: location,
             suppressedMetrics: SuppressionParser.suppressedMetrics(
-                in: node.leadingTrivia, applicableTo: SuppressedMetric.typeLevel)
+                in: node.leadingTrivia, applicableTo: [.lcom4])
         )
 
         detectedTypes.append(detectedNominal)
@@ -111,7 +115,7 @@ class NominalTypeDetector: SyntaxVisitor {
             members: node.memberBlock.members,
             location: location,
             suppressedMetrics: SuppressionParser.suppressedMetrics(
-                in: node.leadingTrivia, applicableTo: SuppressedMetric.typeLevel)
+                in: node.leadingTrivia, applicableTo: [.lcom4])
         )
 
         detectedTypes.append(detectedNominal)

@@ -520,6 +520,39 @@ struct SuppressionParserTests {
                 in: trivia, applicableTo: SuppressedMetric.typeLevel) == [.lcom4])
     }
 
+    @Test("coupling token is recognized for type declarations")
+    func couplingToken() {
+        let trivia: Trivia = [.lineComment("// swift-complexity:disable coupling"), .newlines(1)]
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.typeLevel) == [.coupling])
+        // coupling above a function-level declaration suppresses nothing.
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.functionLevel
+            ).isEmpty)
+    }
+
+    @Test("coupling scope narrowed to enum/protocol excludes lcom4 from bare disable")
+    func couplingOnlyScope() {
+        // enum/protocol declarations pass [.coupling] as the applicable set,
+        // so a bare disable must not leak lcom4 into their suppression set.
+        let trivia: Trivia = [.lineComment("// swift-complexity:disable"), .newlines(1)]
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: [.coupling]) == [.coupling])
+    }
+
+    @Test("SuppressedMetric.coupling model invariants")
+    func couplingMetricInvariants() throws {
+        #expect(SuppressedMetric.coupling.rawValue == "coupling")
+        #expect(SuppressedMetric.typeLevel == [.lcom4, .coupling])
+        // The function-level set must stay unchanged by the coupling addition.
+        #expect(SuppressedMetric.functionLevel == [.cyclomatic, .cognitive])
+        let data = try JSONEncoder().encode(SuppressedMetric.coupling)
+        #expect(try JSONDecoder().decode(SuppressedMetric.self, from: data) == .coupling)
+    }
+
     @Test("Unrelated comment is not treated as a directive")
     func unrelatedCommentIgnored() {
         let trivia: Trivia = [.lineComment("// just a regular comment"), .newlines(1)]
@@ -569,8 +602,10 @@ struct NominalTypeDetectorTests {
         // Then
         #expect(types.count == 5)
         // A bare disable above a type suppresses only the type's own metrics,
-        // never its member functions.
-        #expect(suppressed("BareSuppressedClass") == SuppressedMetric.typeLevel)
+        // never its member functions. NominalTypeDetector reports lcom4 only —
+        // ClassCohesion output must not change when new type-level metrics
+        // (e.g. coupling) are added; those are collected separately.
+        #expect(suppressed("BareSuppressedClass") == [.lcom4])
         #expect(suppressed("Lcom4SuppressedStruct") == [.lcom4])
         #expect(suppressed("NotSuppressedActor") == [])
         // A function-level metric name above a type fails closed.
