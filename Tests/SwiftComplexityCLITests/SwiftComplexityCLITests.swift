@@ -96,6 +96,21 @@ struct CLIIntegrationTests {
 @Suite("CLI Validation Tests", .tags(.cli, .validation))
 struct CLIValidationTests {
 
+    @Test("--coupling parses and requires an index store path at run time")
+    func couplingFlagValidation() async throws {
+        // Parsing accepts the flag on its own...
+        let parsed = try ComplexityCommand.parse(["Sources", "--coupling"])
+        #expect(parsed.coupling)
+        #expect(parsed.indexStorePath == nil)
+
+        // ...but running without --index-store-path fails fast with a clear
+        // error, before any file processing happens.
+        await #expect(throws: ExitCode.self) {
+            var command = parsed
+            try await command.run()
+        }
+    }
+
     @Test("Mutually exclusive flags validation concept")
     func mutuallyExclusiveFlagsValidation() {
         // This test validates the concept of mutually exclusive flags
