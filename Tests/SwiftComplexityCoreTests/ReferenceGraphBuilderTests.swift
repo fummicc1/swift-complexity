@@ -30,7 +30,8 @@ struct ReferenceGraphBuilderTests {
         _ usr: String, kind: IndexSymbolKind = .struct,
         file: String = "A.swift", at position: (line: Int, column: Int) = (50, 1),
         containedBy container: String? = nil,
-        extendedBy extensionUSR: String? = nil
+        extendedBy extensionUSR: String? = nil,
+        baseOf conformer: String? = nil
     ) -> IndexOccurrenceRecord {
         var relations: [RecordRelation] = []
         if let container {
@@ -41,10 +42,28 @@ struct ReferenceGraphBuilderTests {
             relations.append(
                 RecordRelation(usr: extensionUSR, kind: .extension, roles: .extendedBy))
         }
+        if let conformer {
+            relations.append(
+                RecordRelation(usr: conformer, kind: .struct, roles: .baseOf))
+        }
         return IndexOccurrenceRecord(
             usr: usr, name: usr, kind: kind,
             file: file, line: position.line, column: position.column,
             roles: .reference, relations: relations)
+    }
+
+    /// A range index whose single entry spans the given lines of `file`.
+    private func rangeIndex(
+        _ name: String, kind: NominalType = .enum,
+        lines: ClosedRange<Int>
+    ) -> TypeRangeIndex {
+        TypeRangeIndex(entries: [
+            TypeRangeEntry(
+                name: name, declKind: .nominal(kind),
+                startLine: lines.lowerBound, startColumn: 1,
+                endLine: lines.upperBound, endColumn: 80,
+                suppressedMetrics: [])
+        ])
     }
 
     private func build(
@@ -263,5 +282,152 @@ struct ReferenceGraphBuilderTests {
         #expect(graph.nodes.isEmpty)
         #expect(graph.outEdges.isEmpty)
         #expect(diagnostics == CouplingDiagnostics())
+    }
+
+    // MARK: - Fallback attribution
+
+    @Test("Conformance clauses recover edges through the baseOf relation")
+    func baseOfConformanceEdge() {
+        // `struct Foo: P` - the P reference has only a baseOf relation
+        // pointing at the conforming type.
+        let records = [
+            def("s:P", "P", .protocol),
+            def("s:Foo", "Foo", .struct, at: (10, 1)),
+            ref("s:P", kind: .protocol, at: (10, 13), baseOf: "s:Foo"),
+        ]
+        let (graph, diagnostics) = build(records)
+        #expect(graph.outEdges["s:Foo"] == ["s:P"])
+        #expect(diagnostics.attributedByBaseOf == 1)
+    }
+
+    @Test("Protocol fan-in counts every conformer")
+    func protocolFanIn() {
+        let records = [
+            def("s:P", "P", .protocol),
+            def("s:A", "A", .struct, at: (10, 1)),
+            def("s:B", "B", .class, at: (20, 1)),
+            def("s:C", "C", .enum, at: (30, 1)),
+            ref("s:P", kind: .protocol, at: (10, 11), baseOf: "s:A"),
+            ref("s:P", kind: .protocol, at: (20, 10), baseOf: "s:B"),
+            ref("s:P", kind: .protocol, at: (30, 10), baseOf: "s:C"),
+        ]
+        let (graph, _) = build(records)
+        #expect(graph.fanIn(of: "s:P") == 3)
+        #expect(graph.fanOut(of: "s:P") == 0)
+    }
+
+    @Test("Relation-free references attribute by source location")
+    func locationFallback() {
+        // `case wrapped(Outer)` - the Outer reference carries no relations;
+        // its position inside Payload's syntax range attributes it.
+        let records = [
+            def("s:Outer", "Outer", .struct, at: (1, 8)),
+            def("s:Payload", "Payload", .enum, at: (32, 6)),
+            ref("s:Outer", at: (33, 18)),
+        ]
+        let ranges = ["A.swift": rangeIndex("Payload", lines: 32...35)]
+        let (graph, diagnostics) = build(records, typeRanges: ranges)
+        #expect(graph.outEdges["s:Payload"] == ["s:Outer"])
+        #expect(diagnostics.attributedByLocation == 1)
+    }
+
+    @Test("Location fallback refuses ambiguous names without a same-file match")
+    func locationFallbackAmbiguity() {
+        // Two types named "Payload" in other files; the reference sits in a
+        // third file whose range says "Payload" - guessing would risk a wrong
+        // edge, so the reference is dropped.
+        let records = [
+            def("s:P1", "Payload", .enum, file: "B.swift"),
+            def("s:P2", "Payload", .enum, file: "C.swift"),
+            def("s:Outer", "Outer", .struct, at: (1, 8)),
+            ref("s:Outer", at: (33, 18)),
+        ]
+        let ranges = ["A.swift": rangeIndex("Payload", lines: 32...35)]
+        let (graph, diagnostics) = build(records, typeRanges: ranges)
+        #expect(graph.outEdges.isEmpty)
+        #expect(diagnostics.droppedUnattributable == 1)
+
+        // With one candidate in the same file, resolution succeeds.
+        let sameFile = [
+            def("s:P3", "Payload", .enum, at: (32, 6)),
+            def("s:P1", "Payload", .enum, file: "B.swift"),
+            def("s:Outer", "Outer", .struct, at: (1, 8)),
+            ref("s:Outer", at: (33, 18)),
+        ]
+        let (resolved, _) = build(sameFile, typeRanges: ranges)
+        #expect(resolved.outEdges["s:P3"] == ["s:Outer"])
+    }
+
+    @Test("Typealias references are excluded and counted")
+    func typealiasExcluded() {
+        let records = [
+            def("s:A", "A", .struct),
+            def("s:A.m", "m()", .instanceMethod, childOf: "s:A"),
+            def("s:Alias", "Alias", .typealias, at: (40, 1)),
+            ref("s:Alias", kind: .typealias, containedBy: "s:A.m"),
+        ]
+        let (graph, diagnostics) = build(records)
+        #expect(graph.outEdges.isEmpty)
+        #expect(diagnostics.droppedTypealias == 1)
+    }
+
+    @Test("References with no attribution evidence drop without throwing")
+    func unattributableDropped() {
+        let records = [
+            def("s:B", "B", .struct, at: (10, 1)),
+            // No relations, and no syntax range covers the location.
+            ref("s:B", at: (99, 1)),
+        ]
+        let (graph, diagnostics) = build(records)
+        #expect(graph.outEdges.isEmpty)
+        #expect(diagnostics.droppedUnattributable == 1)
+    }
+
+    @Test("containedBy wins over baseOf: one reference, one edge")
+    func containedByBeatsBaseOf() {
+        let records = [
+            def("s:P", "P", .protocol),
+            def("s:Foo", "Foo", .struct, at: (10, 1)),
+            def("s:Foo.m", "m()", .instanceMethod, at: (11, 5), childOf: "s:Foo"),
+            ref("s:P", kind: .protocol, containedBy: "s:Foo.m", baseOf: "s:Foo"),
+        ]
+        let (graph, diagnostics) = build(records)
+        #expect(graph.outEdges["s:Foo"] == ["s:P"])
+        #expect(diagnostics.attributedByContainedBy == 1)
+        #expect(diagnostics.attributedByBaseOf == 0)
+    }
+
+    @Test("Diagnostics buckets partition every reference")
+    func diagnosticsInvariant() {
+        let records = [
+            def("s:P", "P", .protocol),
+            def("s:A", "A", .struct, at: (10, 1)),
+            def("s:A.m", "m()", .instanceMethod, at: (11, 5), childOf: "s:A"),
+            def("s:B", "B", .struct, at: (20, 1)),
+            def("s:Alias", "Alias", .typealias, at: (40, 1)),
+            def("s:Payload", "Payload", .enum, at: (32, 6)),
+            ref("s:B", containedBy: "s:A.m"),  // containedBy
+            ref("s:P", kind: .protocol, at: (10, 11), baseOf: "s:A"),  // baseOf
+            ref("s:B", at: (33, 18)),  // location (inside Payload)
+            ref("s:Swift.Int", at: (51, 1), containedBy: "s:A.m"),  // non-project
+            ref("s:Alias", kind: .typealias, at: (52, 1), containedBy: "s:A.m"),  // typealias
+            ref("s:B", at: (99, 1)),  // unattributable
+            ref("s:A", at: (53, 1), containedBy: "s:A.m"),  // self reference
+        ]
+        let ranges = ["A.swift": rangeIndex("Payload", lines: 32...35)]
+        let (_, d) = build(records, typeRanges: ranges)
+
+        #expect(d.refsTotal == 7)
+        #expect(d.attributedByContainedBy == 2)  // edge to B + self reference
+        #expect(d.attributedByBaseOf == 1)
+        #expect(d.attributedByLocation == 1)
+        #expect(d.droppedNonProjectSymbol == 1)
+        #expect(d.droppedTypealias == 1)
+        #expect(d.droppedUnattributable == 1)
+        #expect(d.selfReferencesSkipped == 1)
+        // The invariant documented on CouplingDiagnostics.
+        let attributed = d.attributedByContainedBy + d.attributedByBaseOf + d.attributedByLocation
+        let dropped = d.droppedNonProjectSymbol + d.droppedTypealias + d.droppedUnattributable
+        #expect(d.refsTotal == attributed + dropped)
     }
 }

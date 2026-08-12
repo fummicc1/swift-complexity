@@ -128,51 +128,10 @@ enum ReferenceGraphBuilder {
             return nil
         }
 
-        // Pass 2: references become type-to-type edges.
-        var outEdges: [String: Set<String>] = [:]
-        var inEdges: [String: Set<String>] = [:]
-
-        for record in occurrences
-        where record.roles.contains(.reference) || record.roles.contains(.call) {
-            diagnostics.refsTotal += 1
-
-            // Target side: the referenced type, or the type owning the
-            // referenced member.
-            guard defs[record.usr] != nil else {
-                diagnostics.droppedNonProjectSymbol += 1
-                continue
-            }
-            guard let target = ownerType(record.usr) else {
-                diagnostics.droppedUnattributable += 1
-                continue
-            }
-
-            // Source side: who holds this reference.
-            let source: String?
-            if let container = record.relations.first(where: { $0.roles.contains(.containedBy) }),
-                let resolved = ownerType(container.usr)
-            {
-                source = resolved
-                diagnostics.attributedByContainedBy += 1
-            } else {
-                source = nil
-            }
-
-            guard let source else {
-                diagnostics.droppedUnattributable += 1
-                continue
-            }
-
-            if source == target {
-                diagnostics.selfReferencesSkipped += 1
-                continue
-            }
-            outEdges[source, default: []].insert(target)
-            inEdges[target, default: []].insert(source)
-        }
-
         // Node construction: join index definitions with syntax ranges for
-        // dotted names, actor kinds, and suppression.
+        // dotted names, actor kinds, and suppression. Runs before the
+        // reference pass because location-based attribution needs the
+        // name-to-USR mapping.
         var nodes: [String: ReferenceGraph.Node] = [:]
         for usr in typeUSRs {
             guard let def = defs[usr] else { continue }
@@ -193,6 +152,92 @@ enum ReferenceGraphBuilder {
                 location: SourceLocation(line: def.line, column: def.column),
                 suppressedMetrics: entry.map(\.suppressedMetrics) ?? []
             )
+        }
+
+        var typeUSRsByName: [String: [String]] = [:]
+        for node in nodes.values {
+            typeUSRsByName[node.name, default: []].append(node.usr)
+        }
+
+        /// Maps a syntax type name back to a USR. Same-file candidates win;
+        /// an ambiguous name with no same-file candidate resolves to nil
+        /// rather than guessing a wrong edge.
+        func typeUSR(named name: String, inFile file: String) -> String? {
+            guard let candidates = typeUSRsByName[name] else { return nil }
+            if let sameFile = candidates.first(where: { nodes[$0]?.file == file }),
+                candidates.filter({ nodes[$0]?.file == file }).count == 1
+            {
+                return sameFile
+            }
+            return candidates.count == 1 ? candidates[0] : nil
+        }
+
+        // Pass 2: references become type-to-type edges.
+        var outEdges: [String: Set<String>] = [:]
+        var inEdges: [String: Set<String>] = [:]
+
+        for record in occurrences
+        where record.roles.contains(.reference) || record.roles.contains(.call) {
+            diagnostics.refsTotal += 1
+
+            // Typealias references are excluded from coupling: resolving
+            // through the alias would need semantic type information the
+            // index does not expose directly.
+            if record.kind == .typealias {
+                diagnostics.droppedTypealias += 1
+                continue
+            }
+
+            // Target side: the referenced type, or the type owning the
+            // referenced member.
+            guard defs[record.usr] != nil else {
+                diagnostics.droppedNonProjectSymbol += 1
+                continue
+            }
+            guard let target = ownerType(record.usr) else {
+                diagnostics.droppedUnattributable += 1
+                continue
+            }
+
+            // Source side: who holds this reference. Attribution cascades
+            // from the most to the least semantic evidence:
+            // 1. containedBy - the reference sits inside a declaration.
+            // 2. baseOf - inheritance/conformance clauses carry only this
+            //    relation, pointing at the inheriting type.
+            // 3. Syntax location - e.g. enum case payload annotations carry
+            //    no relations at all.
+            let source: String?
+            if let container = record.relations.first(where: { $0.roles.contains(.containedBy) }),
+                let resolved = ownerType(container.usr)
+            {
+                source = resolved
+                diagnostics.attributedByContainedBy += 1
+            } else if let base = record.relations.first(where: { $0.roles.contains(.baseOf) }),
+                let resolved = ownerType(base.usr)
+            {
+                source = resolved
+                diagnostics.attributedByBaseOf += 1
+            } else if let entry = typeRanges[record.file]?.innermostType(
+                line: record.line, column: record.column),
+                let resolved = typeUSR(named: entry.resolvedTypeName, inFile: record.file)
+            {
+                source = resolved
+                diagnostics.attributedByLocation += 1
+            } else {
+                source = nil
+            }
+
+            guard let source else {
+                diagnostics.droppedUnattributable += 1
+                continue
+            }
+
+            if source == target {
+                diagnostics.selfReferencesSkipped += 1
+                continue
+            }
+            outEdges[source, default: []].insert(target)
+            inEdges[target, default: []].insert(source)
         }
 
         let graph = ReferenceGraph(nodes: nodes, outEdges: outEdges, inEdges: inEdges)
