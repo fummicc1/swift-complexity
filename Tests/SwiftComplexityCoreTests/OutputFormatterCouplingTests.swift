@@ -54,6 +54,82 @@ struct OutputFormatterCouplingTests {
         #expect(!text.contains("Type Coupling:"))
     }
 
+    // MARK: - SARIF
+
+    private func sarifResults(
+        couplings: [TypeCoupling], configuration: ThresholdConfiguration?
+    ) throws -> [[String: Any]] {
+        let output = OutputFormatter().format(
+            results: [result(couplings: couplings)], format: .sarif,
+            options: OutputOptions(thresholdConfiguration: configuration))
+        let json = try #require(
+            try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any])
+        let runs = try #require(json["runs"] as? [[String: Any]])
+        return try #require(runs[0]["results"] as? [[String: Any]])
+    }
+
+    @Test("Fan-out violations become type_fan_out results, error at double the threshold")
+    func sarifFanOutLevels() throws {
+        let configuration = ThresholdConfiguration(coupling: CouplingThresholds(fanOut: 10))
+        let couplings = [
+            TypeCoupling(
+                name: "Warning", kind: .struct, fanIn: 0, fanOut: 10,
+                location: SourceLocation(line: 1, column: 1)),
+            TypeCoupling(
+                name: "Error", kind: .class, fanIn: 0, fanOut: 20,
+                location: SourceLocation(line: 9, column: 1)),
+        ]
+        let results = try sarifResults(couplings: couplings, configuration: configuration)
+
+        #expect(results.count == 2)
+        let warning = try #require(results.first { $0["level"] as? String == "warning" })
+        #expect(warning["ruleId"] as? String == "type_fan_out")
+        let message = try #require((warning["message"] as? [String: Any])?["text"] as? String)
+        #expect(message.contains("'Warning' has fan-out 10 (threshold: 10)"))
+        let error = try #require(results.first { $0["level"] as? String == "error" })
+        #expect((error["message"] as? [String: Any])?["text"] as? String != nil)
+    }
+
+    @Test("Fan-in thresholds are judged by their own rule")
+    func sarifFanInRule() throws {
+        let configuration = ThresholdConfiguration(coupling: CouplingThresholds(fanIn: 5))
+        let couplings = [
+            TypeCoupling(
+                name: "Hub", kind: .protocol, fanIn: 6, fanOut: 0,
+                location: SourceLocation(line: 1, column: 1))
+        ]
+        let results = try sarifResults(couplings: couplings, configuration: configuration)
+        #expect(results.count == 1)
+        #expect(results[0]["ruleId"] as? String == "type_fan_in")
+    }
+
+    @Test("Without coupling thresholds the SARIF report carries no coupling results")
+    func sarifReportOnlyWithoutConfig() throws {
+        let couplings = [
+            TypeCoupling(
+                name: "Huge", kind: .class, fanIn: 99, fanOut: 99,
+                location: SourceLocation(line: 1, column: 1))
+        ]
+        // A configuration without a coupling block, and no configuration at all.
+        for configuration in [ThresholdConfiguration(defaultThreshold: 10), nil] {
+            let results = try sarifResults(couplings: couplings, configuration: configuration)
+            #expect(results.isEmpty)
+        }
+    }
+
+    @Test("Suppressed types produce no SARIF coupling results")
+    func sarifSuppressionSkips() throws {
+        let configuration = ThresholdConfiguration(coupling: CouplingThresholds(fanOut: 1))
+        let couplings = [
+            TypeCoupling(
+                name: "Muted", kind: .class, fanIn: 0, fanOut: 30,
+                location: SourceLocation(line: 1, column: 1),
+                suppressedMetrics: [.coupling])
+        ]
+        let results = try sarifResults(couplings: couplings, configuration: configuration)
+        #expect(results.isEmpty)
+    }
+
     @Test("Hotspots appear only with a threshold, coupling data, and violations")
     func hotspotVisibilityConditions() {
         let violating = function("busy", in: "Hub", cyclomatic: 12, cognitive: 15)
