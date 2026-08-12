@@ -1,7 +1,7 @@
 {
   "files": [
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/class_with_methods.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/class_with_methods.swift",
       "functions": [
         {
           "cognitiveComplexity": 0,
@@ -48,7 +48,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/cognitive_nested_conditions.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/cognitive_nested_conditions.swift",
       "functions": [
         {
           "cognitiveComplexity": 3,
@@ -72,7 +72,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/computed_property.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/computed_property.swift",
       "functions": [
         {
           "cognitiveComplexity": 3,
@@ -130,7 +130,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/else_if_chain.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/else_if_chain.swift",
       "functions": [
         {
           "cognitiveComplexity": 3,
@@ -154,7 +154,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/function_with_if.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/function_with_if.swift",
       "functions": [
         {
           "cognitiveComplexity": 1,
@@ -178,7 +178,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/integration_test_sample.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/integration_test_sample.swift",
       "functions": [
         {
           "cognitiveComplexity": 0,
@@ -212,7 +212,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/issue6_nested_else_if.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/issue6_nested_else_if.swift",
       "functions": [
         {
           "cognitiveComplexity": 46,
@@ -236,7 +236,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/nested_conditions.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/nested_conditions.swift",
       "functions": [
         {
           "cognitiveComplexity": 5,
@@ -260,7 +260,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/protocol_decl.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/protocol_decl.swift",
       "functions": [],
       "summary": {
         "averageCognitiveComplexity": 0,
@@ -273,7 +273,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/protocol_extension_decl.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/protocol_extension_decl.swift",
       "functions": [
         {
           "cognitiveComplexity": 0,
@@ -298,7 +298,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/simple_function.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/simple_function.swift",
       "functions": [
         {
           "cognitiveComplexity": 0,
@@ -322,7 +322,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/single_function.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/single_function.swift",
       "functions": [
         {
           "cognitiveComplexity": 0,
@@ -346,7 +346,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/suppressed_functions.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/suppressed_functions.swift",
       "functions": [
         {
           "cognitiveComplexity": 2,
@@ -435,7 +435,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/suppressed_types.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/suppressed_types.swift",
       "functions": [
         {
           "cognitiveComplexity": 0,
@@ -559,7 +559,7 @@
       }
     },
     {
-      "filePath": "/Users/fumiyatanaka/Work/Apps/swift-complexity/Tests/SwiftComplexityCoreTests/Fixtures/very_complex_function.swift",
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/very_complex_function.swift",
       "functions": [
         {
           "cognitiveComplexity": 14,

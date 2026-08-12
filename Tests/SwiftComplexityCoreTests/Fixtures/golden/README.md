@@ -30,10 +30,12 @@ swift build
 FIX=Tests/SwiftComplexityCoreTests/Fixtures
 BIN=.build/debug/SwiftComplexityCLI
 NORM='walk(if type=="object" and has("suppressedMetrics") and (.suppressedMetrics != null) then .suppressedMetrics |= sort else . end)'
+# jq must run BEFORE the path relativization: the raw encoder output escapes
+# slashes ("\/"), so sed would silently match nothing on it.
 "$BIN" "$FIX" --format json --recursive \
-  | sed "s|$(pwd)/||g" | jq -S "$NORM" > "$FIX/golden/complexity_plain.json"
+  | jq -S "$NORM" | sed "s|$(pwd)/||g" > "$FIX/golden/complexity_plain.json"
 "$BIN" "$FIX" --format json --recursive --lcom4 --index-store-path .build/debug/index/store \
-  | sed "s|$(pwd)/||g" | jq -S "$NORM" > "$FIX/golden/complexity_lcom4.json"
+  | jq -S "$NORM" | sed "s|$(pwd)/||g" > "$FIX/golden/complexity_lcom4.json"
 ```
 
 Note: `GoldenCompatibilityTests` pins the exact fixture file list that existed

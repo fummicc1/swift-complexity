@@ -53,9 +53,12 @@ import Testing
         /// JSON object tree whose `suppressedMetrics` arrays are sorted (Set
         /// encoding order is nondeterministic). Object key order is irrelevant to
         /// the NSDictionary comparison used by the tests.
+        ///
+        /// Relativization happens on parsed values, never on the raw JSON
+        /// string: JSONEncoder escapes slashes ("\/"), so a textual search for
+        /// the repo root silently matches nothing.
         private func canonicalize(_ json: String) throws -> NSDictionary {
-            let relativized = json.replacingOccurrences(of: repoRoot.path + "/", with: "")
-            let object = try JSONSerialization.jsonObject(with: Data(relativized.utf8))
+            let object = try JSONSerialization.jsonObject(with: Data(json.utf8))
             let dictionary = try #require(object as? [String: Any])
             return try #require(normalized(dictionary) as? NSDictionary)
         }
@@ -66,6 +69,10 @@ import Testing
                 for (key, element) in dictionary {
                     if key == "suppressedMetrics", let metrics = element as? [String] {
                         result[key] = metrics.sorted()
+                    } else if key == "filePath", let path = element as? String,
+                        path.hasPrefix(repoRoot.path + "/")
+                    {
+                        result[key] = String(path.dropFirst(repoRoot.path.count + 1))
                     } else {
                         result[key] = normalized(element)
                     }
