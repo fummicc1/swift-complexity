@@ -40,3 +40,8 @@ Note: `GoldenCompatibilityTests` pins the exact fixture file list that existed
 at generation time, so new fixture files added for later features do not
 affect this test. Extending the pinned list requires regenerating the goldens
 from a pre-change commit.
+
+The comparison runs on macOS only: the goldens are generated on macOS, and
+Foundation's JSON encoding/parsing differs slightly on Linux — platform
+variance is not what this regression gate measures. Linux behavior is covered
+by the CI integration steps.
