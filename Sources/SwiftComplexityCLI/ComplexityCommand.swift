@@ -149,6 +149,15 @@ public struct ComplexityCommand: AsyncParsableCommand {
                         .utf8))
         }
 
+        // A configured coupling gate that never runs would pass CI silently,
+        // e.g. when the --coupling flag is dropped from one job.
+        if configuration.coupling != nil, !coupling {
+            FileHandle.standardError.write(
+                Data(
+                    "Warning: coupling thresholds are configured but --coupling is not enabled, so they will not gate this run.\n"
+                        .utf8))
+        }
+
         logVerboseConfiguration(configuration: configuration)
 
         do {
