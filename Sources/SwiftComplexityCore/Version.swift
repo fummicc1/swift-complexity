@@ -3,5 +3,5 @@
 /// Referenced by the CLI (`--version`), the MCP server handshake, and the
 /// SARIF `tool.driver.version` field so a release bump happens in one place.
 public enum SwiftComplexityVersion {
-    public static let current = "1.2.1"
+    public static let current = "1.3.0"
 }
