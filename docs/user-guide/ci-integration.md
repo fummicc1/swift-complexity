@@ -81,9 +81,14 @@ diff and in the repository's Security tab.
   Code Scanning even when the analysis step fails the build.
 - **Runner support**: macOS (arm64/x86_64) and Linux (x86_64). Linux arm64
   runners are not supported because no binary is published for them.
-- Per-type thresholds, inline suppression comments, and LCOM4 analysis all
-  work in CI exactly as they do locally — see the
-  [Usage Guide](usage.md) for details.
+- **Index-backed analyses (`--lcom4`, `--coupling`) do not work through the
+  action's zero-toolchain path**: they need the index store that only a
+  build of your package produces, and the action runs on bare runners
+  without building anything. To use them in CI, run the plain CLI in a job
+  that executes `swift build` first (see below), passing
+  `--index-store-path .build/debug/index/store`.
+- Per-type thresholds and inline suppression comments work in CI exactly as
+  they do locally — see the [Usage Guide](usage.md) for details.
 
 ## Without the Action (plain CLI)
 

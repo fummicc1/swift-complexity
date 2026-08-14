@@ -231,5 +231,95 @@ struct ThresholdConfigurationTests {
                     fromFileAtPath: "/nonexistent/swift-complexity.yml")
             }
         }
+
+        @Test("Decodes coupling thresholds (fanOut only)")
+        func decodesCouplingFanOutOnly() throws {
+            let yaml = """
+                coupling:
+                  fanOut: 15
+                """
+            let path = try writeTempYAML(yaml)
+            defer { try? FileManager.default.removeItem(atPath: path) }
+
+            let config = try ThresholdConfiguration.load(fromFileAtPath: path)
+            #expect(config.coupling?.fanOut == 15)
+            #expect(config.coupling?.fanIn == nil)
+            // Coupling-only configs must not enable complexity-threshold paths.
+            #expect(config.isEmpty)
+        }
+
+        @Test("Decodes coupling thresholds (both keys) alongside complexity keys")
+        func decodesCouplingBothKeys() throws {
+            let yaml = """
+                defaultThreshold: 10
+                coupling:
+                  fanOut: 15
+                  fanIn: 25
+                """
+            let path = try writeTempYAML(yaml)
+            defer { try? FileManager.default.removeItem(atPath: path) }
+
+            let config = try ThresholdConfiguration.load(fromFileAtPath: path)
+            #expect(config.defaultThreshold == 10)
+            #expect(config.coupling?.fanOut == 15)
+            #expect(config.coupling?.fanIn == 25)
+        }
+
+        @Test("Config without a coupling key stays report-only (backward compatible)")
+        func decodesWithoutCoupling() throws {
+            let yaml = """
+                defaultThreshold: 10
+                """
+            let path = try writeTempYAML(yaml)
+            defer { try? FileManager.default.removeItem(atPath: path) }
+
+            let config = try ThresholdConfiguration.load(fromFileAtPath: path)
+            #expect(config.coupling == nil)
+        }
+    }
+
+    @Suite("couplingViolations")
+    struct CouplingViolationTests {
+        private func coupling(
+            fanIn: Int, fanOut: Int, suppressed: Set<SuppressedMetric>? = nil
+        ) -> TypeCoupling {
+            TypeCoupling(
+                name: "T", kind: .class, fanIn: fanIn, fanOut: fanOut,
+                location: SourceLocation(line: 1, column: 1),
+                suppressedMetrics: suppressed)
+        }
+
+        @Test("fanOut threshold uses >= semantics like the complexity gate")
+        func fanOutGreaterOrEqual() {
+            let config = ThresholdConfiguration(coupling: CouplingThresholds(fanOut: 15))
+            #expect(
+                config.couplingViolations(coupling(fanIn: 0, fanOut: 15))
+                    == [CouplingViolation(metric: .fanOut, value: 15, threshold: 15)])
+            #expect(config.couplingViolations(coupling(fanIn: 0, fanOut: 14)).isEmpty)
+        }
+
+        @Test("fanIn threshold is judged independently of fanOut")
+        func fanInIndependent() {
+            let config = ThresholdConfiguration(
+                coupling: CouplingThresholds(fanOut: 100, fanIn: 5))
+            #expect(
+                config.couplingViolations(coupling(fanIn: 6, fanOut: 1))
+                    == [CouplingViolation(metric: .fanIn, value: 6, threshold: 5)])
+        }
+
+        @Test("Suppressed type produces no violations while values stay reported")
+        func suppressionSkipsJudgment() {
+            let config = ThresholdConfiguration(coupling: CouplingThresholds(fanOut: 1))
+            let type = coupling(fanIn: 0, fanOut: 30, suppressed: [.coupling])
+            #expect(config.couplingViolations(type).isEmpty)
+            // The metric value itself is untouched by suppression.
+            #expect(type.fanOut == 30)
+        }
+
+        @Test("No coupling config means report-only: never a violation")
+        func noConfigNoViolations() {
+            let config = ThresholdConfiguration(defaultThreshold: 10)
+            #expect(config.couplingViolations(coupling(fanIn: 99, fanOut: 99)).isEmpty)
+        }
     }
 }

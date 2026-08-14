@@ -54,6 +54,65 @@ struct DataModelTests {
         #expect(function.location.line == 1)
     }
 
+    @Test("NominalType coupling-only cases round-trip and keep raw values")
+    func nominalTypeCouplingCases() throws {
+        // enum/protocol exist for coupling metrics; LCOM4 must never emit them.
+        #expect(NominalType.enum.rawValue == "enum")
+        #expect(NominalType.protocol.rawValue == "protocol")
+        for kind in [NominalType.enum, .protocol] {
+            let data = try JSONEncoder().encode(kind)
+            #expect(try JSONDecoder().decode(NominalType.self, from: data) == kind)
+        }
+    }
+
+    @Test("TypeCoupling derives instability from the counts")
+    func typeCouplingInstability() {
+        let location = SourceLocation(line: 1, column: 1)
+        // 2 / (1 + 2) = 0.666..., and isolated types have no defined ratio.
+        let coupled = TypeCoupling(
+            name: "A", kind: .struct, fanIn: 1, fanOut: 2, location: location)
+        #expect(coupled.instability != nil)
+        #expect(abs(coupled.instability! - 2.0 / 3.0) < 0.0001)
+        let entryPoint = TypeCoupling(
+            name: "B", kind: .class, fanIn: 0, fanOut: 5, location: location)
+        #expect(entryPoint.instability == 1.0)
+        let isolated = TypeCoupling(
+            name: "C", kind: .enum, fanIn: 0, fanOut: 0, location: location)
+        #expect(isolated.instability == nil)
+    }
+
+    @Test("TypeCoupling round-trips through Codable, nil instability omits the key")
+    func typeCouplingCodable() throws {
+        let coupling = TypeCoupling(
+            name: "Isolated", kind: .protocol, fanIn: 0, fanOut: 0,
+            location: SourceLocation(line: 3, column: 1),
+            suppressedMetrics: [.coupling])
+        let data = try JSONEncoder().encode(coupling)
+        let decoded = try JSONDecoder().decode(TypeCoupling.self, from: data)
+        #expect(decoded == coupling)
+        // Optionals encode via encodeIfPresent: an absent key keeps the JSON
+        // schema additive for consumers that reject unknown null values.
+        let json = String(decoding: data, as: UTF8.self)
+        #expect(!json.contains("instability"))
+    }
+
+    @Test("CouplingSummary aggregates and stays safe on empty input")
+    func couplingSummaryAggregation() {
+        let location = SourceLocation(line: 1, column: 1)
+        let types = [
+            TypeCoupling(name: "A", kind: .struct, fanIn: 4, fanOut: 1, location: location),
+            TypeCoupling(name: "B", kind: .class, fanIn: 0, fanOut: 7, location: location),
+        ]
+        let summary = CouplingSummary(types: types)
+        #expect(summary.totalTypes == 2)
+        #expect(summary.maxFanIn == 4)
+        #expect(summary.maxFanOut == 7)
+        #expect(abs(summary.averageFanOut - 4.0) < 0.0001)
+        let empty = CouplingSummary(types: [])
+        #expect(empty.totalTypes == 0)
+        #expect(empty.averageFanOut == 0.0)
+    }
+
     @Test("FileSummary with empty functions")
     func fileSummaryEmptyFunctions() {
         // When
@@ -520,6 +579,39 @@ struct SuppressionParserTests {
                 in: trivia, applicableTo: SuppressedMetric.typeLevel) == [.lcom4])
     }
 
+    @Test("coupling token is recognized for type declarations")
+    func couplingToken() {
+        let trivia: Trivia = [.lineComment("// swift-complexity:disable coupling"), .newlines(1)]
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.typeLevel) == [.coupling])
+        // coupling above a function-level declaration suppresses nothing.
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: SuppressedMetric.functionLevel
+            ).isEmpty)
+    }
+
+    @Test("coupling scope narrowed to enum/protocol excludes lcom4 from bare disable")
+    func couplingOnlyScope() {
+        // enum/protocol declarations pass [.coupling] as the applicable set,
+        // so a bare disable must not leak lcom4 into their suppression set.
+        let trivia: Trivia = [.lineComment("// swift-complexity:disable"), .newlines(1)]
+        #expect(
+            SuppressionParser.suppressedMetrics(
+                in: trivia, applicableTo: [.coupling]) == [.coupling])
+    }
+
+    @Test("SuppressedMetric.coupling model invariants")
+    func couplingMetricInvariants() throws {
+        #expect(SuppressedMetric.coupling.rawValue == "coupling")
+        #expect(SuppressedMetric.typeLevel == [.lcom4, .coupling])
+        // The function-level set must stay unchanged by the coupling addition.
+        #expect(SuppressedMetric.functionLevel == [.cyclomatic, .cognitive])
+        let data = try JSONEncoder().encode(SuppressedMetric.coupling)
+        #expect(try JSONDecoder().decode(SuppressedMetric.self, from: data) == .coupling)
+    }
+
     @Test("Unrelated comment is not treated as a directive")
     func unrelatedCommentIgnored() {
         let trivia: Trivia = [.lineComment("// just a regular comment"), .newlines(1)]
@@ -569,8 +661,10 @@ struct NominalTypeDetectorTests {
         // Then
         #expect(types.count == 5)
         // A bare disable above a type suppresses only the type's own metrics,
-        // never its member functions.
-        #expect(suppressed("BareSuppressedClass") == SuppressedMetric.typeLevel)
+        // never its member functions. NominalTypeDetector reports lcom4 only —
+        // ClassCohesion output must not change when new type-level metrics
+        // (e.g. coupling) are added; those are collected separately.
+        #expect(suppressed("BareSuppressedClass") == [.lcom4])
         #expect(suppressed("Lcom4SuppressedStruct") == [.lcom4])
         #expect(suppressed("NotSuppressedActor") == [])
         // A function-level metric name above a type fails closed.

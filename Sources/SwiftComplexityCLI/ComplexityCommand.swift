@@ -86,16 +86,23 @@ public struct ComplexityCommand: AsyncParsableCommand {
     )
     public var lcom4: Bool = false
 
+    @Flag(
+        name: .long,
+        help: "Show type coupling metrics (fan-in, fan-out, instability)"
+    )
+    public var coupling: Bool = false
+
     @Option(
         name: .long,
-        help: "IndexStore path for LCOM4 analysis (e.g., .build/debug/index/store)",
+        help: "IndexStore path for index-backed analysis (e.g., .build/debug/index/store)",
         completion: .directory
     )
     public var indexStorePath: String?
 
     @Option(
         name: .long,
-        help: "Swift toolchain path for LCOM4 (required on Linux, optional on macOS)"
+        help:
+            "Swift toolchain path for index-backed analysis (required on Linux, optional on macOS)"
     )
     public var toolchainPath: String?
 
@@ -142,6 +149,15 @@ public struct ComplexityCommand: AsyncParsableCommand {
                         .utf8))
         }
 
+        // A configured coupling gate that never runs would pass CI silently,
+        // e.g. when the --coupling flag is dropped from one job.
+        if configuration.coupling != nil, !coupling {
+            FileHandle.standardError.write(
+                Data(
+                    "Warning: coupling thresholds are configured but --coupling is not enabled, so they will not gate this run.\n"
+                        .utf8))
+        }
+
         logVerboseConfiguration(configuration: configuration)
 
         do {
@@ -151,11 +167,16 @@ public struct ComplexityCommand: AsyncParsableCommand {
             let processingOptions = ProcessingOptions(
                 recursive: recursive,
                 excludePatterns: exclude,
-                verbose: verbose
+                verbose: verbose,
+                couplingEnabled: coupling
             )
 
             let results = try await fileProcessor.processFiles(
                 at: paths, options: processingOptions)
+
+            if coupling, let diagnostics = await fileProcessor.lastCouplingDiagnostics {
+                printCouplingDiagnostics(diagnostics)
+            }
 
             if reportSuppressions {
                 printSuppressionsReport(results: results)
@@ -178,7 +199,7 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
             print(output)
 
-            if threshold != nil || !configuration.isEmpty,
+            if threshold != nil || !configuration.isEmpty || configuration.coupling != nil,
                 hasExceededThreshold(
                     results: results, threshold: threshold, configuration: configuration)
             {
@@ -223,19 +244,23 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
     /// Validates LCOM4 options
     private func validateLCOM4Options() throws {
-        if lcom4 && indexStorePath == nil {
-            print("Error: --lcom4 requires --index-store-path option.")
+        // Both index-backed analyses share the same prerequisites.
+        let indexBackedFlag: String? = lcom4 ? "--lcom4" : (coupling ? "--coupling" : nil)
+        guard let flag = indexBackedFlag else { return }
+
+        if indexStorePath == nil {
+            print("Error: \(flag) requires --index-store-path option.")
             print(
-                "Example: swift-complexity Sources --lcom4 --index-store-path .build/debug/index/store"
+                "Example: swift-complexity Sources \(flag) --index-store-path .build/debug/index/store"
             )
             throw ExitCode.failure
         }
 
         #if os(Linux)
-            if lcom4 && toolchainPath == nil {
-                print("Error: --lcom4 requires --toolchain-path option on Linux.")
+            if toolchainPath == nil {
+                print("Error: \(flag) requires --toolchain-path option on Linux.")
                 print(
-                    "Example: swift-complexity Sources --lcom4 --index-store-path .build/debug/index/store --toolchain-path ~/.local/share/swiftly/toolchains/swift-6.2"
+                    "Example: swift-complexity Sources \(flag) --index-store-path .build/debug/index/store --toolchain-path ~/.local/share/swiftly/toolchains/swift-6.2"
                 )
                 throw ExitCode.failure
             }
@@ -267,13 +292,16 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
     /// Creates a ComplexityAnalyzer instance
     private func createAnalyzer() throws -> ComplexityAnalyzer {
-        guard lcom4, let indexStorePath = indexStorePath else {
+        guard lcom4 || coupling, let indexStorePath = indexStorePath else {
             return try ComplexityAnalyzer()
         }
         let toolchainURL = toolchainPath.map { URL(fileURLWithPath: $0) }
+        // lcom4Enabled keeps cohesion fields out of coupling-only runs; the
+        // index store itself is shared by both analyses.
         return try ComplexityAnalyzer(
             indexStorePath: URL(fileURLWithPath: indexStorePath),
-            toolchainPath: toolchainURL
+            toolchainPath: toolchainURL,
+            lcom4Enabled: lcom4
         )
     }
 
@@ -296,8 +324,8 @@ public struct ComplexityCommand: AsyncParsableCommand {
                         return "cyclomatic (\(function.cyclomaticComplexity))"
                     case .cognitive:
                         return "cognitive (\(function.cognitiveComplexity))"
-                    case .lcom4:
-                        return nil  // type-level metric, never present on a function
+                    case .lcom4, .coupling:
+                        return nil  // type-level metrics, never present on a function
                     }
                 }
                 lines.append(
@@ -308,6 +336,12 @@ public struct ComplexityCommand: AsyncParsableCommand {
                 guard cohesion.isSuppressed(.lcom4) else { continue }
                 lines.append(
                     "\(result.filePath):\(cohesion.location.line): \(cohesion.name) — lcom4 (\(cohesion.lcom4))"
+                )
+            }
+            for coupling in result.typeCouplings ?? [] {
+                guard coupling.isSuppressed(.coupling) else { continue }
+                lines.append(
+                    "\(result.filePath):\(coupling.location.line): \(coupling.name) — coupling (fan-in \(coupling.fanIn), fan-out \(coupling.fanOut))"
                 )
             }
         }
@@ -339,15 +373,22 @@ public struct ComplexityCommand: AsyncParsableCommand {
                 cohesion.lcom4 >= 3 && !cohesion.isSuppressed(.lcom4)
             }
 
-            // Keep result if either functions or cohesions pass threshold
-            guard !filteredFunctions.isEmpty || filteredCohesions?.isEmpty == false else {
+            guard
+                !filteredFunctions.isEmpty || filteredCohesions?.isEmpty == false
+                    || !(result.typeCouplings ?? []).isEmpty
+            else {
                 return nil
             }
 
+            // Coupling metrics pass through unfiltered: they are ranking
+            // context (Hotspots needs every type's fan-in) and report data,
+            // not a violations list. Coupling violations gate through the
+            // exit code and SARIF levels instead.
             return ComplexityResult(
                 filePath: result.filePath,
                 functions: filteredFunctions,
-                classCohesions: filteredCohesions
+                classCohesions: filteredCohesions,
+                typeCouplings: result.typeCouplings
             )
         }
     }
@@ -363,7 +404,32 @@ public struct ComplexityCommand: AsyncParsableCommand {
                     return true
                 }
             }
+            for coupling in result.typeCouplings ?? []
+            where !configuration.couplingViolations(coupling).isEmpty {
+                return true
+            }
         }
         return false
+    }
+
+    /// One-line attribution summary to stderr (details with --verbose). The
+    /// percentage covers project references only: stdlib/framework symbols
+    /// are excluded by design, not lost.
+    private func printCouplingDiagnostics(_ diagnostics: CouplingDiagnostics) {
+        let projectRefs = diagnostics.attributedTotal + diagnostics.droppedUnattributable
+        let percent = projectRefs == 0 ? 100 : diagnostics.attributedTotal * 100 / projectRefs
+        var lines = [
+            "coupling: \(diagnostics.refsTotal) refs (\(projectRefs) project), "
+                + "\(percent)% attributed (containedBy \(diagnostics.attributedByContainedBy), "
+                + "baseOf \(diagnostics.attributedByBaseOf), "
+                + "location \(diagnostics.attributedByLocation)), "
+                + "\(diagnostics.droppedUnattributable) unattributed"
+        ]
+        if verbose {
+            lines.append("  external symbols: \(diagnostics.droppedNonProjectSymbol)")
+            lines.append("  typealias refs:   \(diagnostics.droppedTypealias)")
+            lines.append("  self references:  \(diagnostics.selfReferencesSkipped)")
+        }
+        FileHandle.standardError.write(Data((lines.joined(separator: "\n") + "\n").utf8))
     }
 }

@@ -17,16 +17,39 @@ public struct ComplexityResult: Codable, Sendable {
     /// Cohesion summary (optional, only present when LCOM4 analysis is enabled)
     public let cohesionSummary: CohesionSummary?
 
+    /// Coupling metrics for types defined in this file (optional, only present
+    /// when coupling analysis is enabled)
+    public let typeCouplings: [TypeCoupling]?
+
+    /// Coupling summary (optional, only present when coupling analysis is enabled)
+    public let couplingSummary: CouplingSummary?
+
     public init(
         filePath: String,
         functions: [FunctionComplexity],
-        classCohesions: [ClassCohesion]? = nil
+        classCohesions: [ClassCohesion]? = nil,
+        typeCouplings: [TypeCoupling]? = nil
     ) {
         self.filePath = filePath
         self.functions = functions
         self.classCohesions = classCohesions
         self.summary = FileSummary(functions: functions)
         self.cohesionSummary = classCohesions.map { CohesionSummary(classes: $0) }
+        self.typeCouplings = typeCouplings
+        self.couplingSummary = typeCouplings.map { CouplingSummary(types: $0) }
+    }
+
+    /// Returns a copy of this result with coupling metrics attached. Coupling
+    /// is computed in a whole-project pass after per-file analysis, so results
+    /// are rebuilt rather than mutated; the summaries recompute
+    /// deterministically from the same inputs.
+    public func attaching(typeCouplings: [TypeCoupling]) -> ComplexityResult {
+        ComplexityResult(
+            filePath: filePath,
+            functions: functions,
+            classCohesions: classCohesions,
+            typeCouplings: typeCouplings
+        )
     }
 }
 

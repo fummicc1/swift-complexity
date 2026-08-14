@@ -127,6 +127,53 @@ jobs:
             --toolchain-path "${TOOLCHAIN}" \
             --format json --recursive
 
+      - name: Test coupling analysis (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Reuses the debug build + index store from the LCOM4 step above.
+          .build/debug/SwiftComplexityCLI Sources --coupling \
+            --index-store-path .build/debug/index/store \
+            --format json --recursive > coupling-report.json 2> coupling-diag.txt
+          cat coupling-diag.txt
+          # Structural invariants rather than pinned values, so refactors
+          # don't break CI: the CLI entry point is referenced by nothing
+          # (instability exactly 1.0), pure models depend on nothing
+          # project-side, and the formatter touches most models.
+          jq -e '[.files[].typeCouplings[]?] | length > 20' coupling-report.json
+          jq -e '[.files[].typeCouplings[]?] | any(.name == "ComplexityCommand" and .instability == 1)' coupling-report.json
+          jq -e '[.files[].typeCouplings[]?] | any(.name == "SuppressedMetric" and .fanOut == 0 and .fanIn >= 5)' coupling-report.json
+          jq -e '[.files[].typeCouplings[]?] | any(.name == "OutputFormatter" and .fanOut >= 15)' coupling-report.json
+          grep -q "coupling:" coupling-diag.txt
+          # Gate round trip: an absurdly low threshold must exit 1...
+          printf 'coupling:\n  fanOut: 1\n' > /tmp/coupling-gate.yml
+          if .build/debug/SwiftComplexityCLI Sources --coupling \
+            --index-store-path .build/debug/index/store \
+            --config /tmp/coupling-gate.yml --recursive > /dev/null 2>&1; then
+            echo "Expected exit 1 with coupling fanOut threshold 1"; exit 1
+          fi
+          # ...and an unreachable one must exit 0 (config present, no violation).
+          printf 'coupling:\n  fanOut: 9999\n' > /tmp/coupling-gate.yml
+          .build/debug/SwiftComplexityCLI Sources --coupling \
+            --index-store-path .build/debug/index/store \
+            --config /tmp/coupling-gate.yml --recursive > /dev/null
+
+      - name: Test coupling analysis (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          SWIFTLY_HOME="${HOME}/.local/share/swiftly"
+          TOOLCHAIN=$(ls -d ${SWIFTLY_HOME}/toolchains/* 2>/dev/null | head -1)
+          # Reuses the debug build + index store from the LCOM4 step above.
+          .build/debug/SwiftComplexityCLI Sources --coupling \
+            --index-store-path .build/debug/index/store \
+            --toolchain-path "${TOOLCHAIN}" \
+            --format json --recursive > coupling-report.json 2> coupling-diag.txt
+          cat coupling-diag.txt
+          jq -e '[.files[].typeCouplings[]?] | length > 20' coupling-report.json
+          jq -e '[.files[].typeCouplings[]?] | any(.name == "ComplexityCommand" and .instability == 1)' coupling-report.json
+          jq -e '[.files[].typeCouplings[]?] | any(.name == "SuppressedMetric" and .fanOut == 0 and .fanIn >= 5)' coupling-report.json
+          jq -e '[.files[].typeCouplings[]?] | any(.name == "OutputFormatter" and .fanOut >= 15)' coupling-report.json
+          grep -q "coupling:" coupling-diag.txt
+
   action-test:
     name: Action Test
     strategy:

@@ -36,6 +36,40 @@ public struct ThresholdRule: Codable, Sendable, Hashable {
     }
 }
 
+/// Type-level coupling thresholds.
+///
+/// Absent keys mean "report-only": the metric is measured and reported but
+/// never gates the exit code. No defaults ship on purpose — unlike cyclomatic
+/// complexity's established 10/20 convention, sensible fan-in/fan-out limits
+/// depend on codebase size, and a wrong default would flood adopters with
+/// noise.
+public struct CouplingThresholds: Codable, Sendable, Equatable {
+    /// Flag types whose fan-out reaches this value (efferent coupling).
+    public let fanOut: Int?
+
+    /// Flag types whose fan-in reaches this value (afferent coupling).
+    /// Prefer starting with `fanOut`: high fan-in alone is often healthy
+    /// (stable shared models) and is better judged via the hotspot ranking.
+    public let fanIn: Int?
+
+    public init(fanOut: Int? = nil, fanIn: Int? = nil) {
+        self.fanOut = fanOut
+        self.fanIn = fanIn
+    }
+}
+
+/// One coupling threshold violation for a type.
+public struct CouplingViolation: Sendable, Equatable {
+    public enum Metric: String, Sendable {
+        case fanOut
+        case fanIn
+    }
+
+    public let metric: Metric
+    public let value: Int
+    public let threshold: Int
+}
+
 /// Per-type complexity threshold configuration.
 ///
 /// Loaded from a `.swift-complexity.yml` file. Functions are flagged using a
@@ -50,9 +84,31 @@ public struct ThresholdConfiguration: Codable, Sendable, Equatable {
     /// Ordered list of per-type threshold rules.
     public let rules: [ThresholdRule]
 
-    public init(defaultThreshold: Int? = nil, rules: [ThresholdRule] = []) {
+    /// Optional coupling thresholds. `nil` (key absent) keeps coupling
+    /// report-only, preserving the behavior of configurations written before
+    /// coupling metrics existed.
+    public let coupling: CouplingThresholds?
+
+    public init(
+        defaultThreshold: Int? = nil,
+        rules: [ThresholdRule] = [],
+        coupling: CouplingThresholds? = nil
+    ) {
         self.defaultThreshold = defaultThreshold
         self.rules = rules
+        self.coupling = coupling
+    }
+
+    /// Every key is optional: a configuration that only sets `coupling:` (or
+    /// only `defaultThreshold:`) is valid. The synthesized decoder would
+    /// reject files without a `rules:` key.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.defaultThreshold = try container.decodeIfPresent(
+            Int.self, forKey: .defaultThreshold)
+        self.rules = try container.decodeIfPresent([ThresholdRule].self, forKey: .rules) ?? []
+        self.coupling = try container.decodeIfPresent(
+            CouplingThresholds.self, forKey: .coupling)
     }
 
     /// An empty configuration that defines no rules. Resolution then depends
@@ -60,8 +116,28 @@ public struct ThresholdConfiguration: Codable, Sendable, Equatable {
     public static let empty = ThresholdConfiguration()
 
     /// Whether this configuration carries no rules and no default threshold.
+    ///
+    /// Deliberately ignores `coupling`: every existing `isEmpty` call site
+    /// gates complexity-threshold behavior (SARIF warnings, result
+    /// filtering), which a coupling-only configuration must not change.
     public var isEmpty: Bool {
         defaultThreshold == nil && rules.isEmpty
+    }
+
+    /// Coupling threshold violations for `type`, using the same `>=` semantics
+    /// as the complexity exit-code check. Suppression excludes the type from
+    /// the judgment entirely; its values are still reported elsewhere.
+    public func couplingViolations(_ type: TypeCoupling) -> [CouplingViolation] {
+        guard let coupling, !type.isSuppressed(.coupling) else { return [] }
+
+        var violations: [CouplingViolation] = []
+        if let limit = coupling.fanOut, type.fanOut >= limit {
+            violations.append(.init(metric: .fanOut, value: type.fanOut, threshold: limit))
+        }
+        if let limit = coupling.fanIn, type.fanIn >= limit {
+            violations.append(.init(metric: .fanIn, value: type.fanIn, threshold: limit))
+        }
+        return violations
     }
 
     /// Resolves the effective complexity threshold for a function whose

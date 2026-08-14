@@ -4,13 +4,14 @@ import Foundation
 /// `// swift-complexity:disable` comment.
 ///
 /// `cyclomatic`/`cognitive` apply to function-level declarations,
-/// `lcom4` to type declarations (class/struct/actor). Which subset a
+/// `lcom4` and `coupling` to type declarations. Which subset a
 /// directive can actually suppress is decided by the declaration it
 /// precedes — see `SuppressedMetric.functionLevel`/`typeLevel`.
 public enum SuppressedMetric: String, Codable, Hashable, Sendable, CaseIterable {
     case cyclomatic
     case cognitive
     case lcom4
+    case coupling
 }
 
 extension SuppressedMetric {
@@ -18,7 +19,10 @@ extension SuppressedMetric {
     public static let functionLevel: Set<SuppressedMetric> = [.cyclomatic, .cognitive]
 
     /// Metrics a directive above a type declaration can suppress.
-    public static let typeLevel: Set<SuppressedMetric> = [.lcom4]
+    /// `lcom4` applies to class/struct/actor; `coupling` additionally applies
+    /// to enum/protocol — declaration kinds narrow this set further where
+    /// a metric is not applicable.
+    public static let typeLevel: Set<SuppressedMetric> = [.lcom4, .coupling]
 }
 
 /// Represents complexity metrics for a single function or method

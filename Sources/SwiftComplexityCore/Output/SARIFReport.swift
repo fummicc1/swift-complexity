@@ -80,12 +80,15 @@ extension OutputFormatter {
         static let cyclomaticRuleId = "cyclomatic_complexity"
         static let cognitiveRuleId = "cognitive_complexity"
         static let lcom4RuleId = "lcom4_cohesion"
+        static let fanOutRuleId = "type_fan_out"
+        static let fanInRuleId = "type_fan_in"
     }
 
     func formatAsSARIF(results: [ComplexityResult], options: OutputOptions) -> String {
         let sarifResults =
             results.flatMap { complexityResults(for: $0, options: options) }
             + results.flatMap { cohesionResults(for: $0) }
+            + results.flatMap { couplingResults(for: $0, options: options) }
 
         let driver = SARIFDriver(
             name: "swift-complexity",
@@ -130,6 +133,24 @@ extension OutputFormatter {
                 name: "LCOM4Cohesion",
                 shortDescription: SARIFMessage(
                     text: "Classes should not have low cohesion (LCOM4 >= 3)"),
+                helpUri: SARIFConstants.metricsHelpURI
+            ),
+            SARIFRule(
+                id: SARIFConstants.fanOutRuleId,
+                name: "TypeFanOut",
+                shortDescription: SARIFMessage(
+                    text:
+                        "Types should not depend on more types than the configured fan-out threshold"
+                ),
+                helpUri: SARIFConstants.metricsHelpURI
+            ),
+            SARIFRule(
+                id: SARIFConstants.fanInRuleId,
+                name: "TypeFanIn",
+                shortDescription: SARIFMessage(
+                    text:
+                        "Types should not be depended upon by more types than the configured fan-in threshold"
+                ),
                 helpUri: SARIFConstants.metricsHelpURI
             ),
         ]
@@ -195,6 +216,34 @@ extension OutputFormatter {
                 message: SARIFMessage(text: message),
                 locations: [sarifLocation(uri: uri, location: cohesion.location)]
             )
+        }
+    }
+
+    /// Coupling results exist only when coupling thresholds are configured,
+    /// mirroring the exit-code gate: report-only runs upload no violations.
+    private func couplingResults(
+        for result: ComplexityResult, options: OutputOptions
+    ) -> [SARIFResult] {
+        guard let configuration = options.thresholdConfiguration,
+            let couplings = result.typeCouplings
+        else { return [] }
+        let uri = relativizedURI(for: result.filePath)
+
+        return couplings.flatMap { coupling -> [SARIFResult] in
+            configuration.couplingViolations(coupling).map { violation in
+                let (ruleId, label) =
+                    violation.metric == .fanOut
+                    ? (SARIFConstants.fanOutRuleId, "fan-out")
+                    : (SARIFConstants.fanInRuleId, "fan-in")
+                let message =
+                    "\(coupling.kind.rawValue.capitalized) '\(coupling.name)' has \(label) \(violation.value) (threshold: \(violation.threshold))"
+                return SARIFResult(
+                    ruleId: ruleId,
+                    level: violation.value >= violation.threshold * 2 ? "error" : "warning",
+                    message: SARIFMessage(text: message),
+                    locations: [sarifLocation(uri: uri, location: coupling.location)]
+                )
+            }
         }
     }
 

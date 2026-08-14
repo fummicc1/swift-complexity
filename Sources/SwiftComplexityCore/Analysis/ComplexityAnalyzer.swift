@@ -13,12 +13,22 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
     private let lcomCalculator: SemanticLCOMCalculator?
     private let enableLCOM4: Bool
 
+    /// The index store opened for this analyzer, shared with other
+    /// index-backed passes (coupling) so the database is populated once.
+    /// Immutable and Sendable, so cross-actor access needs no await.
+    let sharedIndexStore: SharedIndexStore?
+
     /// Initialize the analyzer
     /// - Parameters:
-    ///   - indexStorePath: Optional IndexStore path for LCOM4 analysis (e.g., .build/debug/index/store). If nil, LCOM4 will be disabled.
-    ///   - toolchainPath: Optional Swift toolchain path for LCOM4 (e.g., ~/.local/share/swiftly/toolchains/swift-6.2).
-    ///                    On macOS, if nil, Xcode toolchain is auto-detected. On Linux, this is required for LCOM4.
-    public init(indexStorePath: URL? = nil, toolchainPath: URL? = nil) throws {
+    ///   - indexStorePath: Optional IndexStore path for index-backed analysis (e.g., .build/debug/index/store). If nil, LCOM4 and coupling are disabled.
+    ///   - toolchainPath: Optional Swift toolchain path (e.g., ~/.local/share/swiftly/toolchains/swift-6.2).
+    ///                    On macOS, if nil, Xcode toolchain is auto-detected. On Linux, this is required for index-backed analysis.
+    ///   - lcom4Enabled: Whether LCOM4 cohesion is computed when an index
+    ///     store is available. Coupling-only runs pass false so cohesion
+    ///     fields stay absent from their output.
+    public init(
+        indexStorePath: URL? = nil, toolchainPath: URL? = nil, lcom4Enabled: Bool = true
+    ) throws {
         self.cyclomaticCalculator = CyclomaticComplexityCalculator(viewMode: .sourceAccurate)
         self.cognitiveCalculator = CognitiveComplexityCalculator(viewMode: .sourceAccurate)
         self.functionDetector = FunctionDetector(viewMode: .sourceAccurate)
@@ -26,12 +36,13 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
 
         // LCOM4: High-accuracy (90-95%) semantic analysis with IndexStore-DB integration
         if let indexStorePath = indexStorePath {
-            self.lcomCalculator = try SemanticLCOMCalculator(
-                indexStorePath: indexStorePath,
-                toolchainPath: toolchainPath
-            )
-            self.enableLCOM4 = true
+            let store = try IndexStoreService.open(
+                indexStorePath: indexStorePath, toolchainPath: toolchainPath)
+            self.sharedIndexStore = store
+            self.lcomCalculator = lcom4Enabled ? SemanticLCOMCalculator(indexStore: store) : nil
+            self.enableLCOM4 = lcom4Enabled
         } else {
+            self.sharedIndexStore = nil
             self.lcomCalculator = nil
             self.enableLCOM4 = false
         }

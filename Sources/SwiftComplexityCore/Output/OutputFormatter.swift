@@ -45,8 +45,11 @@ public class OutputFormatter {
     }
 
     private func formatAsText(results: [ComplexityResult], options: OutputOptions) -> String {
-        let sections = results.compactMap { result -> String? in
-            guard !result.functions.isEmpty || result.classCohesions != nil else { return nil }
+        var sections = results.compactMap { result -> String? in
+            guard
+                !result.functions.isEmpty || result.classCohesions != nil
+                    || !(result.typeCouplings ?? []).isEmpty
+            else { return nil }
 
             var parts: [String] = ["File: \(result.filePath)"]
 
@@ -58,7 +61,15 @@ public class OutputFormatter {
                 parts.append(cohesionSection)
             }
 
+            if let couplingSection = formatCouplingSection(result: result) {
+                parts.append(couplingSection)
+            }
+
             return parts.joined(separator: "\n")
+        }
+
+        if let hotspotSection = formatHotspotSection(results: results, options: options) {
+            sections.append(hotspotSection)
         }
 
         return sections.joined(separator: "\n\n").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -92,6 +103,72 @@ public class OutputFormatter {
         if let summary = result.cohesionSummary {
             output += formatCohesionSummary(summary: summary)
         }
+        return output
+    }
+
+    /// Formats the type coupling table section
+    private func formatCouplingSection(result: ComplexityResult) -> String? {
+        guard let couplings = result.typeCouplings, !couplings.isEmpty else { return nil }
+
+        var output = "Type Coupling:\n"
+        let separator = "+----------------------+----------+--------+---------+-------------+\n"
+        let nameColumn = "Type".padding(toLength: 20, withPad: " ", startingAt: 0)
+        output += "| \(nameColumn) | Kind     | Fan-In | Fan-Out | Instability |\n"
+        output += separator
+        for coupling in couplings {
+            let name = coupling.name.padding(toLength: 20, withPad: " ", startingAt: 0)
+            let kind = coupling.kind.rawValue.padding(toLength: 8, withPad: " ", startingAt: 0)
+            let fanIn = String(coupling.fanIn).padding(toLength: 6, withPad: " ", startingAt: 0)
+            let fanOut = String(coupling.fanOut).padding(toLength: 7, withPad: " ", startingAt: 0)
+            let instability = (coupling.instability.map { String(format: "%.2f", $0) } ?? "-")
+                .padding(toLength: 11, withPad: " ", startingAt: 0)
+            output += "| \(name) | \(kind) | \(fanIn) | \(fanOut) | \(instability) |\n"
+        }
+        output += separator
+        if let summary = result.couplingSummary {
+            output +=
+                "Total: \(summary.totalTypes) types, "
+                + "Max Fan-In: \(summary.maxFanIn), Max Fan-Out: \(summary.maxFanOut), "
+                + "Average Fan-Out: \(String(format: "%.1f", summary.averageFanOut))\n"
+        }
+        return output
+    }
+
+    /// Formats the global hotspot ranking. Requires both a complexity
+    /// threshold (violations are undefined without one) and coupling data
+    /// (the ranking axis), and stays silent when there are no violations.
+    private func formatHotspotSection(results: [ComplexityResult], options: OutputOptions)
+        -> String?
+    {
+        let couplingRan = results.contains { $0.typeCouplings != nil }
+        let hasThreshold =
+            options.threshold != nil || !(options.thresholdConfiguration ?? .empty).isEmpty
+        guard couplingRan, hasThreshold else { return nil }
+
+        let hotspots = HotspotRanker.rank(
+            results: results,
+            configuration: options.thresholdConfiguration ?? .empty,
+            fallbackThreshold: options.threshold)
+        guard !hotspots.isEmpty else { return nil }
+
+        var output = "Hotspots (complexity violations x fan-in):\n"
+        let separator =
+            "+----+----------------------+----------------------+--------+-------+-------+\n"
+        output += "| #  | Function             | Type                 | Fan-In | Cyclo | Cogn  |\n"
+        output += separator
+        for (rank, hotspot) in hotspots.enumerated() {
+            let index = String(rank + 1).padding(toLength: 2, withPad: " ", startingAt: 0)
+            let name = hotspot.function.name.padding(toLength: 20, withPad: " ", startingAt: 0)
+            let type = (hotspot.function.enclosingTypeName ?? "-")
+                .padding(toLength: 20, withPad: " ", startingAt: 0)
+            let fanIn = String(hotspot.typeFanIn).padding(toLength: 6, withPad: " ", startingAt: 0)
+            let cyclo = String(hotspot.function.cyclomaticComplexity)
+                .padding(toLength: 5, withPad: " ", startingAt: 0)
+            let cogn = String(hotspot.function.cognitiveComplexity)
+                .padding(toLength: 5, withPad: " ", startingAt: 0)
+            output += "| \(index) | \(name) | \(type) | \(fanIn) | \(cyclo) | \(cogn) |\n"
+        }
+        output += separator
         return output
     }
 

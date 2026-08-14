@@ -117,6 +117,12 @@ Structured data format for tool integration and programmatic processing.
 }
 ```
 
+With `--lcom4`, each file additionally carries `classCohesions` and
+`cohesionSummary`; with `--coupling`, `typeCouplings` (name, kind, `fanIn`,
+`fanOut`, optional `instability`, location) and `couplingSummary`. All of
+these keys are absent when their analysis is disabled, keeping the schema
+backward compatible.
+
 ### Usage
 
 ```bash
@@ -273,6 +279,12 @@ Each metric violation becomes one SARIF result:
 | `cyclomatic_complexity` | Cyclomatic complexity >= threshold | `warning`, `error` at 2x threshold |
 | `cognitive_complexity` | Cognitive complexity >= threshold | `warning`, `error` at 2x threshold |
 | `lcom4_cohesion` | LCOM4 >= 3 (low cohesion) | `warning`, `error` at LCOM4 >= 5 |
+| `type_fan_out` | Fan-out >= `coupling.fanOut` (config) | `warning`, `error` at 2x threshold |
+| `type_fan_in` | Fan-in >= `coupling.fanIn` (config) | `warning`, `error` at 2x threshold |
+
+Coupling rules fire only when `--coupling` runs with coupling thresholds
+configured in `.swift-complexity.yml`; without them coupling stays
+report-only. See [Type Coupling Metrics](coupling-metrics.md).
 
 Violation detection uses the same `>=` semantics as the exit-code check, so a
 non-empty `results` array always coincides with exit code 1.

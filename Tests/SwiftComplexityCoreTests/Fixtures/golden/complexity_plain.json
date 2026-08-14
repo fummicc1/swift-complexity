@@ -1,0 +1,586 @@
+{
+  "files": [
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/class_with_methods.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "TestClass",
+          "location": {
+            "column": 5,
+            "line": 6
+          },
+          "name": "init",
+          "signature": "init(value: Int)"
+        },
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "TestClass",
+          "location": {
+            "column": 5,
+            "line": 10
+          },
+          "name": "method1",
+          "signature": "func method1()"
+        },
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "TestClass",
+          "location": {
+            "column": 5,
+            "line": 14
+          },
+          "name": "method2",
+          "signature": "func method2()  -> String"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 0,
+        "averageCyclomaticComplexity": 1,
+        "maxCognitiveComplexity": 0,
+        "maxCyclomaticComplexity": 1,
+        "totalCognitiveComplexity": 0,
+        "totalCyclomaticComplexity": 3,
+        "totalFunctions": 3
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/cognitive_nested_conditions.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 3,
+          "cyclomaticComplexity": 3,
+          "location": {
+            "column": 1,
+            "line": 5
+          },
+          "name": "nestedFunction",
+          "signature": "func nestedFunction(a: Int, b: Int)"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 3,
+        "averageCyclomaticComplexity": 3,
+        "maxCognitiveComplexity": 3,
+        "maxCyclomaticComplexity": 3,
+        "totalCognitiveComplexity": 3,
+        "totalCyclomaticComplexity": 3,
+        "totalFunctions": 1
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/computed_property.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 3,
+          "cyclomaticComplexity": 3,
+          "enclosingTypeName": "ComputedPropertyExample",
+          "location": {
+            "column": 9,
+            "line": 4
+          },
+          "name": "shorthandGetter",
+          "signature": "var shorthandGetter : Bool"
+        },
+        {
+          "cognitiveComplexity": 1,
+          "cyclomaticComplexity": 2,
+          "enclosingTypeName": "ComputedPropertyExample",
+          "location": {
+            "column": 9,
+            "line": 21
+          },
+          "name": "explicitProperty.get",
+          "signature": "var explicitProperty { get }"
+        },
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "ComputedPropertyExample",
+          "location": {
+            "column": 9,
+            "line": 27
+          },
+          "name": "explicitProperty.set",
+          "signature": "var explicitProperty { set }"
+        },
+        {
+          "cognitiveComplexity": 1,
+          "cyclomaticComplexity": 2,
+          "enclosingTypeName": "ComputedPropertyExample",
+          "location": {
+            "column": 9,
+            "line": 35
+          },
+          "name": "observedProperty.didSet",
+          "signature": "var observedProperty { didSet }"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 1.25,
+        "averageCyclomaticComplexity": 2,
+        "maxCognitiveComplexity": 3,
+        "maxCyclomaticComplexity": 3,
+        "totalCognitiveComplexity": 5,
+        "totalCyclomaticComplexity": 8,
+        "totalFunctions": 4
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/else_if_chain.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 3,
+          "cyclomaticComplexity": 3,
+          "location": {
+            "column": 1,
+            "line": 6
+          },
+          "name": "checkValue",
+          "signature": "func checkValue(value: Int)  -> String"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 3,
+        "averageCyclomaticComplexity": 3,
+        "maxCognitiveComplexity": 3,
+        "maxCyclomaticComplexity": 3,
+        "totalCognitiveComplexity": 3,
+        "totalCyclomaticComplexity": 3,
+        "totalFunctions": 1
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/function_with_if.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 1,
+          "cyclomaticComplexity": 2,
+          "location": {
+            "column": 1,
+            "line": 5
+          },
+          "name": "functionWithIf",
+          "signature": "func functionWithIf(value: Int)"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 1,
+        "averageCyclomaticComplexity": 2,
+        "maxCognitiveComplexity": 1,
+        "maxCyclomaticComplexity": 2,
+        "totalCognitiveComplexity": 1,
+        "totalCyclomaticComplexity": 2,
+        "totalFunctions": 1
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/integration_test_sample.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "location": {
+            "column": 1,
+            "line": 6
+          },
+          "name": "simpleFunction",
+          "signature": "func simpleFunction()  -> String"
+        },
+        {
+          "cognitiveComplexity": 5,
+          "cyclomaticComplexity": 3,
+          "location": {
+            "column": 1,
+            "line": 10
+          },
+          "name": "complexFunction",
+          "signature": "func complexFunction(number: Int)  -> String"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 2.5,
+        "averageCyclomaticComplexity": 2,
+        "maxCognitiveComplexity": 5,
+        "maxCyclomaticComplexity": 3,
+        "totalCognitiveComplexity": 5,
+        "totalCyclomaticComplexity": 4,
+        "totalFunctions": 2
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/issue6_nested_else_if.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 46,
+          "cyclomaticComplexity": 14,
+          "location": {
+            "column": 1,
+            "line": 6
+          },
+          "name": "processData",
+          "signature": "func processData(data: [String: Any])  -> String"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 46,
+        "averageCyclomaticComplexity": 14,
+        "maxCognitiveComplexity": 46,
+        "maxCyclomaticComplexity": 14,
+        "totalCognitiveComplexity": 46,
+        "totalCyclomaticComplexity": 14,
+        "totalFunctions": 1
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/nested_conditions.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 5,
+          "cyclomaticComplexity": 3,
+          "location": {
+            "column": 1,
+            "line": 5
+          },
+          "name": "complexFunction",
+          "signature": "func complexFunction(a: Int, b: Int)"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 5,
+        "averageCyclomaticComplexity": 3,
+        "maxCognitiveComplexity": 5,
+        "maxCyclomaticComplexity": 3,
+        "totalCognitiveComplexity": 5,
+        "totalCyclomaticComplexity": 3,
+        "totalFunctions": 1
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/protocol_decl.swift",
+      "functions": [],
+      "summary": {
+        "averageCognitiveComplexity": 0,
+        "averageCyclomaticComplexity": 0,
+        "maxCognitiveComplexity": 0,
+        "maxCyclomaticComplexity": 0,
+        "totalCognitiveComplexity": 0,
+        "totalCyclomaticComplexity": 0,
+        "totalFunctions": 0
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/protocol_extension_decl.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "P",
+          "location": {
+            "column": 5,
+            "line": 9
+          },
+          "name": "foo",
+          "signature": "func foo()"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 0,
+        "averageCyclomaticComplexity": 1,
+        "maxCognitiveComplexity": 0,
+        "maxCyclomaticComplexity": 1,
+        "totalCognitiveComplexity": 0,
+        "totalCyclomaticComplexity": 1,
+        "totalFunctions": 1
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/simple_function.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "location": {
+            "column": 1,
+            "line": 5
+          },
+          "name": "simpleFunction",
+          "signature": "func simpleFunction()"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 0,
+        "averageCyclomaticComplexity": 1,
+        "maxCognitiveComplexity": 0,
+        "maxCyclomaticComplexity": 1,
+        "totalCognitiveComplexity": 0,
+        "totalCyclomaticComplexity": 1,
+        "totalFunctions": 1
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/single_function.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "location": {
+            "column": 1,
+            "line": 6
+          },
+          "name": "testFunction",
+          "signature": "func testFunction(param: String)  -> Int"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 0,
+        "averageCyclomaticComplexity": 1,
+        "maxCognitiveComplexity": 0,
+        "maxCyclomaticComplexity": 1,
+        "totalCognitiveComplexity": 0,
+        "totalCyclomaticComplexity": 1,
+        "totalFunctions": 1
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/suppressed_functions.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 2,
+          "cyclomaticComplexity": 3,
+          "location": {
+            "column": 1,
+            "line": 6
+          },
+          "name": "fullySuppressed",
+          "signature": "func fullySuppressed(a: Int, b: Int)",
+          "suppressedMetrics": [
+            "cognitive",
+            "cyclomatic"
+          ]
+        },
+        {
+          "cognitiveComplexity": 2,
+          "cyclomaticComplexity": 3,
+          "location": {
+            "column": 1,
+            "line": 16
+          },
+          "name": "cyclomaticOnlySuppressed",
+          "signature": "func cyclomaticOnlySuppressed(a: Int, b: Int)",
+          "suppressedMetrics": [
+            "cyclomatic"
+          ]
+        },
+        {
+          "cognitiveComplexity": 2,
+          "cyclomaticComplexity": 3,
+          "location": {
+            "column": 1,
+            "line": 28
+          },
+          "name": "cognitiveOnlySuppressed",
+          "signature": "func cognitiveOnlySuppressed(a: Int, b: Int)",
+          "suppressedMetrics": [
+            "cognitive"
+          ]
+        },
+        {
+          "cognitiveComplexity": 2,
+          "cyclomaticComplexity": 3,
+          "location": {
+            "column": 1,
+            "line": 38
+          },
+          "name": "notSuppressed",
+          "signature": "func notSuppressed(a: Int, b: Int)"
+        },
+        {
+          "cognitiveComplexity": 2,
+          "cyclomaticComplexity": 3,
+          "location": {
+            "column": 1,
+            "line": 50
+          },
+          "name": "typoedMetricNotSuppressed",
+          "signature": "func typoedMetricNotSuppressed(a: Int, b: Int)"
+        },
+        {
+          "cognitiveComplexity": 3,
+          "cyclomaticComplexity": 3,
+          "enclosingTypeName": "SuppressedComputedProperty",
+          "location": {
+            "column": 9,
+            "line": 61
+          },
+          "name": "isValid",
+          "signature": "var isValid : Bool",
+          "suppressedMetrics": [
+            "cognitive",
+            "cyclomatic"
+          ]
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 2.1666666666666665,
+        "averageCyclomaticComplexity": 3,
+        "maxCognitiveComplexity": 3,
+        "maxCyclomaticComplexity": 3,
+        "totalCognitiveComplexity": 13,
+        "totalCyclomaticComplexity": 18,
+        "totalFunctions": 6
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/suppressed_types.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "BareSuppressedClass",
+          "location": {
+            "column": 5,
+            "line": 9
+          },
+          "name": "useA",
+          "signature": "func useA()"
+        },
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "BareSuppressedClass",
+          "location": {
+            "column": 5,
+            "line": 10
+          },
+          "name": "useB",
+          "signature": "func useB()"
+        },
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "Lcom4SuppressedStruct",
+          "location": {
+            "column": 5,
+            "line": 17
+          },
+          "name": "useA",
+          "signature": "func useA()  -> Int"
+        },
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "Lcom4SuppressedStruct",
+          "location": {
+            "column": 5,
+            "line": 18
+          },
+          "name": "useB",
+          "signature": "func useB()  -> Int"
+        },
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "NotSuppressedActor",
+          "location": {
+            "column": 5,
+            "line": 25
+          },
+          "name": "useA",
+          "signature": "func useA()"
+        },
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "NotSuppressedActor",
+          "location": {
+            "column": 5,
+            "line": 26
+          },
+          "name": "useB",
+          "signature": "func useB()"
+        },
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "WrongLevelMetricClass",
+          "location": {
+            "column": 5,
+            "line": 34
+          },
+          "name": "useA",
+          "signature": "func useA()"
+        },
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "WrongLevelMetricClass",
+          "location": {
+            "column": 5,
+            "line": 35
+          },
+          "name": "useB",
+          "signature": "func useB()"
+        },
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "TypoedMetricClass",
+          "location": {
+            "column": 5,
+            "line": 43
+          },
+          "name": "useA",
+          "signature": "func useA()"
+        },
+        {
+          "cognitiveComplexity": 0,
+          "cyclomaticComplexity": 1,
+          "enclosingTypeName": "TypoedMetricClass",
+          "location": {
+            "column": 5,
+            "line": 44
+          },
+          "name": "useB",
+          "signature": "func useB()"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 0,
+        "averageCyclomaticComplexity": 1,
+        "maxCognitiveComplexity": 0,
+        "maxCyclomaticComplexity": 1,
+        "totalCognitiveComplexity": 0,
+        "totalCyclomaticComplexity": 10,
+        "totalFunctions": 10
+      }
+    },
+    {
+      "filePath": "Tests/SwiftComplexityCoreTests/Fixtures/very_complex_function.swift",
+      "functions": [
+        {
+          "cognitiveComplexity": 14,
+          "cyclomaticComplexity": 5,
+          "location": {
+            "column": 1,
+            "line": 5
+          },
+          "name": "veryComplexFunction",
+          "signature": "func veryComplexFunction(a: Int, b: Int, c: Int, d: Int)  -> String"
+        }
+      ],
+      "summary": {
+        "averageCognitiveComplexity": 14,
+        "averageCyclomaticComplexity": 5,
+        "maxCognitiveComplexity": 14,
+        "maxCyclomaticComplexity": 5,
+        "totalCognitiveComplexity": 14,
+        "totalCyclomaticComplexity": 5,
+        "totalFunctions": 1
+      }
+    }
+  ]
+}
