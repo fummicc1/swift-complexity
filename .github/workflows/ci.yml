@@ -143,7 +143,6 @@ jobs:
           jq -e '[.files[].typeCouplings[]?] | any(.name == "ComplexityCommand" and .instability == 1)' coupling-report.json
           jq -e '[.files[].typeCouplings[]?] | any(.name == "SuppressedMetric" and .fanOut == 0 and .fanIn >= 5)' coupling-report.json
           jq -e '[.files[].typeCouplings[]?] | any(.name == "OutputFormatter" and .fanOut >= 15)' coupling-report.json
-          # The stderr diagnostics line must exist and report high attribution.
           grep -q "coupling:" coupling-diag.txt
           # Gate round trip: an absurdly low threshold must exit 1...
           printf 'coupling:\n  fanOut: 1\n' > /tmp/coupling-gate.yml

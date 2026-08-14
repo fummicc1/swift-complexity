@@ -2,12 +2,12 @@ import Foundation
 
 /// One entry of the hotspot ranking: a complexity-violating function paired
 /// with how widely its enclosing type is depended upon.
-public struct Hotspot: Sendable, Equatable {
-    public let function: FunctionComplexity
-    public let filePath: String
+struct Hotspot: Sendable, Equatable {
+    let function: FunctionComplexity
+    let filePath: String
     /// Fan-in of the enclosing type; 0 when the type cannot be resolved
     /// (free functions, ambiguous names), which sinks the entry naturally.
-    public let typeFanIn: Int
+    let typeFanIn: Int
 }
 
 /// Ranks complexity violations by the blast radius of their enclosing type.
@@ -17,15 +17,14 @@ public struct Hotspot: Sendable, Equatable {
 /// plain lexicographic sort - (type fan-in desc, cognitive desc, cyclomatic
 /// desc, name) - rather than a weighted score, so users can verify the
 /// ranking by eye.
-public enum HotspotRanker {
+enum HotspotRanker {
 
-    public static func rank(
+    static func rank(
         results: [ComplexityResult],
         configuration: ThresholdConfiguration,
         fallbackThreshold: Int?,
         limit: Int = 10
     ) -> [Hotspot] {
-        // Type name -> (file, fanIn) candidates across all analyzed files.
         var fanInCandidates: [String: [(file: String, fanIn: Int)]] = [:]
         for result in results {
             for coupling in result.typeCouplings ?? [] {

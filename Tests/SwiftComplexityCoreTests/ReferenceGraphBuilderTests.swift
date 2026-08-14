@@ -427,7 +427,7 @@ struct ReferenceGraphBuilderTests {
         #expect(d.droppedTypealias == 1)
         #expect(d.droppedUnattributable == 1)
         #expect(d.selfReferencesSkipped == 1)
-        // The invariant documented on CouplingDiagnostics.
+        // Cross-check the partition invariant documented on CouplingDiagnostics.
         let attributed = d.attributedByContainedBy + d.attributedByBaseOf + d.attributedByLocation
         let dropped = d.droppedNonProjectSymbol + d.droppedTypealias + d.droppedUnattributable
         #expect(d.refsTotal == attributed + dropped)

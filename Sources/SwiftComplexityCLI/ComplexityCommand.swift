@@ -364,8 +364,6 @@ public struct ComplexityCommand: AsyncParsableCommand {
                 cohesion.lcom4 >= 3 && !cohesion.isSuppressed(.lcom4)
             }
 
-            // Keep result if functions or cohesions pass threshold, or the
-            // file carries coupling data.
             guard
                 !filteredFunctions.isEmpty || filteredCohesions?.isEmpty == false
                     || !(result.typeCouplings ?? []).isEmpty

@@ -228,8 +228,6 @@ enum ReferenceGraphBuilder {
             diagnostics.droppedTypealias += 1
             return nil
         }
-        // Target side: the referenced type, or the type owning the
-        // referenced member.
         guard index.defs[record.usr] != nil else {
             diagnostics.droppedNonProjectSymbol += 1
             return nil
