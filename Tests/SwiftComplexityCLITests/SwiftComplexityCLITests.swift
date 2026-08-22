@@ -209,3 +209,121 @@ struct CLIConfigOptionTests {
         #expect(command.reportSuppressions == true)
     }
 }
+
+// MARK: - Config Execution Tests
+
+@Suite("CLI Config Execution", .tags(.cli, .integration))
+struct CLIConfigExecutionTests {
+
+    /// Writes a config file and a source file into a scratch directory and
+    /// hands both paths to `body`. The directory is removed afterwards.
+    private func withFixture(
+        yaml: String,
+        source: String,
+        _ body: (_ sourcePath: String, _ configPath: String) async throws -> Void
+    ) async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swift-complexity-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let configURL = directory.appendingPathComponent(".swift-complexity.yml")
+        let sourceURL = directory.appendingPathComponent("Fixture.swift")
+        try yaml.write(to: configURL, atomically: true, encoding: .utf8)
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+
+        try await body(sourceURL.path, configURL.path)
+    }
+
+    /// Cyclomatic complexity of the generated method is 1 + `branches`.
+    private func source(typeName: String, branches: Int) -> String {
+        let ifs = (0..<branches)
+            .map { "        if flags[\($0)] { count += 1 }" }
+            .joined(separator: "\n")
+        return """
+            struct \(typeName) {
+                func find(flags: [Bool]) -> Int {
+                    var count = 0
+            \(ifs)
+                    return count
+                }
+            }
+            """
+    }
+
+    @Test("A rule threshold gates inclusively through the CLI")
+    func ruleThresholdGatesAtBoundary() async throws {
+        let yaml = """
+            rules:
+              - suffix: Repository
+                threshold: 5
+            """
+        // 4 branches -> cyclomatic 5, exactly on the rule threshold
+        try await withFixture(yaml: yaml, source: source(typeName: "UserRepository", branches: 4)) {
+            sourcePath, configPath in
+            let command = try ComplexityCommand.parse([sourcePath, "--config", configPath])
+            await #expect(throws: ExitCode.self) {
+                try await command.run()
+            }
+        }
+    }
+
+    @Test("Complexity below the rule threshold exits normally")
+    func ruleThresholdPassesBelowBoundary() async throws {
+        let yaml = """
+            rules:
+              - suffix: Repository
+                threshold: 5
+            """
+        try await withFixture(yaml: yaml, source: source(typeName: "UserRepository", branches: 3)) {
+            sourcePath, configPath in
+            let command = try ComplexityCommand.parse([sourcePath, "--config", configPath])
+            try await command.run()
+        }
+    }
+
+    @Test("--threshold overrides the config defaultThreshold as fallback")
+    func thresholdFlagOverridesConfigDefault() async throws {
+        let yaml = "defaultThreshold: 5"
+        // 6 branches -> cyclomatic 7: violates the config default of 5 but
+        // passes once --threshold 10 takes over as the fallback
+        try await withFixture(yaml: yaml, source: source(typeName: "SomeService", branches: 6)) {
+            sourcePath, configPath in
+            let gated = try ComplexityCommand.parse([sourcePath, "--config", configPath])
+            await #expect(throws: ExitCode.self) {
+                try await gated.run()
+            }
+
+            let overridden = try ComplexityCommand.parse([
+                sourcePath, "--config", configPath, "--threshold", "10",
+            ])
+            try await overridden.run()
+        }
+    }
+
+    @Test("Malformed YAML fails the run")
+    func malformedConfigFails() async throws {
+        let yaml = """
+            rules:
+              - suffix: Repository
+                 threshold: [broken
+            """
+        try await withFixture(yaml: yaml, source: source(typeName: "UserRepository", branches: 1)) {
+            sourcePath, configPath in
+            let command = try ComplexityCommand.parse([sourcePath, "--config", configPath])
+            await #expect(throws: ExitCode.self) {
+                try await command.run()
+            }
+        }
+    }
+
+    @Test("A missing config path fails the run")
+    func missingConfigPathFails() async throws {
+        let command = try ComplexityCommand.parse([
+            "Sources", "--config", "/nonexistent/swift-complexity-missing.yml",
+        ])
+        await #expect(throws: ExitCode.self) {
+            try await command.run()
+        }
+    }
+}
