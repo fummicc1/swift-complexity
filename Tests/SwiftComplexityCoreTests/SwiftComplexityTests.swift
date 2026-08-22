@@ -788,6 +788,248 @@ struct OutputFormatterTests {
         #expect(output.isEmpty)
     }
 
+    @Test("Xcode diagnostics flag cyclomatic complexity equal to the threshold")
+    func xcodeDiagnosticsCyclomaticAtThreshold() {
+        // Given - the exit-code gate flags "value >= threshold", so the boundary
+        // must yield a visible diagnostic instead of a silent build failure
+        let functions = [
+            FunctionComplexity(
+                name: "atCyclomaticBoundary", signature: "func atCyclomaticBoundary()",
+                cyclomaticComplexity: 10, cognitiveComplexity: 1,
+                location: SourceLocation(line: 3, column: 1))
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(
+            results: [result], format: .xcode, options: OutputOptions(threshold: 10))
+
+        // Then
+        #expect(output.contains("warning:"))
+        #expect(output.contains("'atCyclomaticBoundary'"))
+    }
+
+    @Test("Xcode diagnostics flag cognitive complexity equal to the threshold")
+    func xcodeDiagnosticsCognitiveAtThreshold() {
+        // Given
+        let functions = [
+            FunctionComplexity(
+                name: "atCognitiveBoundary", signature: "func atCognitiveBoundary()",
+                cyclomaticComplexity: 1, cognitiveComplexity: 10,
+                location: SourceLocation(line: 3, column: 1))
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(
+            results: [result], format: .xcode, options: OutputOptions(threshold: 10))
+
+        // Then
+        #expect(output.contains("warning:"))
+        #expect(output.contains("'atCognitiveBoundary'"))
+    }
+
+    @Test("Xcode diagnostics stay silent below the threshold")
+    func xcodeDiagnosticsBelowThreshold() {
+        // Given
+        let functions = [
+            FunctionComplexity(
+                name: "belowBoundary", signature: "func belowBoundary()",
+                cyclomaticComplexity: 9, cognitiveComplexity: 9,
+                location: SourceLocation(line: 3, column: 1))
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(
+            results: [result], format: .xcode, options: OutputOptions(threshold: 10))
+
+        // Then
+        #expect(output.isEmpty)
+    }
+
+    @Test("Xcode diagnostics keep flagging complexity above the threshold")
+    func xcodeDiagnosticsAboveThreshold() {
+        // Given
+        let functions = [
+            FunctionComplexity(
+                name: "aboveBoundary", signature: "func aboveBoundary()",
+                cyclomaticComplexity: 15, cognitiveComplexity: 3,
+                location: SourceLocation(line: 3, column: 1))
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(
+            results: [result], format: .xcode, options: OutputOptions(threshold: 10))
+
+        // Then
+        #expect(output.contains("warning:"))
+        #expect(output.contains("'aboveBoundary'"))
+    }
+
+    @Test("Xcode diagnostics respect suppression at the threshold boundary")
+    func xcodeDiagnosticsSuppressedAtThreshold() {
+        // Given - cyclomatic sits exactly on the threshold but is suppressed
+        let functions = [
+            FunctionComplexity(
+                name: "suppressedBoundary", signature: "func suppressedBoundary()",
+                cyclomaticComplexity: 10, cognitiveComplexity: 1,
+                location: SourceLocation(line: 3, column: 1),
+                suppressedMetrics: [.cyclomatic])
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(
+            results: [result], format: .xcode, options: OutputOptions(threshold: 10))
+
+        // Then
+        #expect(output.isEmpty)
+    }
+
+    @Test("Xcode severity stays warning at exactly twice the threshold")
+    func xcodeDiagnosticsSeverityAtTwiceThreshold() {
+        // Given - the error escalation rule is "> threshold * 2" and is
+        // deliberately untouched by the >= alignment of the base check
+        let functions = [
+            FunctionComplexity(
+                name: "twiceThreshold", signature: "func twiceThreshold()",
+                cyclomaticComplexity: 20, cognitiveComplexity: 1,
+                location: SourceLocation(line: 3, column: 1))
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(
+            results: [result], format: .xcode, options: OutputOptions(threshold: 10))
+
+        // Then
+        #expect(output.contains("warning:"))
+        #expect(!output.contains("error:"))
+    }
+
+    @Test("Xcode severity escalates to error beyond twice the threshold")
+    func xcodeDiagnosticsSeverityBeyondTwiceThreshold() {
+        // Given
+        let functions = [
+            FunctionComplexity(
+                name: "beyondTwiceThreshold", signature: "func beyondTwiceThreshold()",
+                cyclomaticComplexity: 21, cognitiveComplexity: 1,
+                location: SourceLocation(line: 3, column: 1))
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(
+            results: [result], format: .xcode, options: OutputOptions(threshold: 10))
+
+        // Then
+        #expect(output.contains("error:"))
+    }
+
+    @Test("Xcode diagnostics honor the minimum threshold of one")
+    func xcodeDiagnosticsMinimumThreshold() {
+        // Given
+        let functions = [
+            FunctionComplexity(
+                name: "minimal", signature: "func minimal()",
+                cyclomaticComplexity: 1, cognitiveComplexity: 0,
+                location: SourceLocation(line: 3, column: 1))
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(
+            results: [result], format: .xcode, options: OutputOptions(threshold: 1))
+
+        // Then
+        #expect(output.contains("warning:"))
+    }
+
+    @Test("Xcode diagnostics apply per-type rule thresholds inclusively")
+    func xcodeDiagnosticsPerTypeRuleAtThreshold() {
+        // Given - a rule threshold of 5 must flag a matched type's function
+        // whose complexity is exactly 5
+        let configuration = ThresholdConfiguration(
+            rules: [ThresholdRule(suffix: "Repository", threshold: 5)])
+        let functions = [
+            FunctionComplexity(
+                name: "atRuleBoundary", signature: "func atRuleBoundary()",
+                cyclomaticComplexity: 5, cognitiveComplexity: 0,
+                location: SourceLocation(line: 3, column: 1),
+                enclosingTypeName: "UserRepository")
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(
+            results: [result], format: .xcode,
+            options: OutputOptions(thresholdConfiguration: configuration))
+
+        // Then
+        #expect(output.contains("warning:"))
+        #expect(output.contains("'atRuleBoundary'"))
+    }
+
+    @Test("Xcode diagnostics agree with isExceeded for every function")
+    func xcodeDiagnosticsMatchIsExceeded() {
+        // Given - the invariant behind CLI/CI/Xcode alignment: a function fails
+        // the exit-code gate exactly when a diagnostic line is emitted for it
+        let configuration = ThresholdConfiguration(
+            defaultThreshold: 8,
+            rules: [ThresholdRule(suffix: "Repository", threshold: 5)])
+        let location = SourceLocation(line: 1, column: 1)
+        let functions = [
+            FunctionComplexity(
+                name: "repoAtRule", signature: "func repoAtRule()",
+                cyclomaticComplexity: 5, cognitiveComplexity: 0, location: location,
+                enclosingTypeName: "UserRepository"),
+            FunctionComplexity(
+                name: "repoBelowRule", signature: "func repoBelowRule()",
+                cyclomaticComplexity: 4, cognitiveComplexity: 0, location: location,
+                enclosingTypeName: "UserRepository"),
+            FunctionComplexity(
+                name: "serviceAtDefault", signature: "func serviceAtDefault()",
+                cyclomaticComplexity: 8, cognitiveComplexity: 0, location: location,
+                enclosingTypeName: "SomeService"),
+            FunctionComplexity(
+                name: "serviceBelowDefault", signature: "func serviceBelowDefault()",
+                cyclomaticComplexity: 7, cognitiveComplexity: 0, location: location,
+                enclosingTypeName: "SomeService"),
+            FunctionComplexity(
+                name: "freeAtDefault", signature: "func freeAtDefault()",
+                cyclomaticComplexity: 1, cognitiveComplexity: 8, location: location),
+            FunctionComplexity(
+                name: "freeBelowDefault", signature: "func freeBelowDefault()",
+                cyclomaticComplexity: 1, cognitiveComplexity: 1, location: location),
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(
+            results: [result], format: .xcode,
+            options: OutputOptions(thresholdConfiguration: configuration))
+
+        // Then
+        for function in functions {
+            #expect(
+                output.contains("'\(function.name)'")
+                    == configuration.isExceeded(function, fallback: nil),
+                "\(function.name) must appear in xcode output exactly when it fails the gate")
+        }
+    }
+
     @Test("SARIF format reports one result per violated metric")
     func sarifFormat() throws {
         // Given
