@@ -325,7 +325,7 @@ import PackageDescription
 let package = Package(
     name: "YourProject",
     dependencies: [
-        .package(url: "https://github.com/fummicc1/swift-complexity.git", from: "1.0.0")
+        .package(url: "https://github.com/fummicc1/swift-complexity.git", from: "1.4.0")
     ],
     targets: [
         .target(
@@ -338,6 +338,9 @@ let package = Package(
 )
 ```
 
+The consuming package must declare `// swift-tools-version: 6.0` or later;
+SwiftPM skips the plugin's analysis command for older tools versions.
+
 ### Xcode Project Integration
 
 1. Add swift-complexity package to your Xcode project
@@ -346,21 +349,28 @@ let package = Package(
 
 ### Configuration
 
-**Xcode Build Settings:**
+The plugin discovers `.swift-complexity.yml` (or `.yaml`) automatically — at the
+package root for SwiftPM builds, or next to `.xcodeproj` for Xcode project
+builds — so plugin builds resolve per-type rules and `defaultThreshold` exactly
+like CLI and CI runs. Editing the file re-triggers the analysis.
 
-- Key: `SWIFT_COMPLEXITY_THRESHOLD`
-- Value: `15` (or any number, defaults to 10)
+Threshold precedence:
 
-**Environment Variable (SPM):**
+| `SWIFT_COMPLEXITY_THRESHOLD` env | Config file | Effective behavior |
+| --- | --- | --- |
+| set | any | `--threshold <env>` as fallback; per-type rules still win |
+| not set | present | The config alone decides |
+| not set | absent | `--threshold 10` (historical default) |
 
-- `SWIFT_COMPLEXITY_THRESHOLD=15`
+See the [Xcode Build Tool Plugin guide](docs/user-guide/xcode-plugin.md) for
+details and limitations (coupling/LCOM4 gates run in CI only).
 
 ### Features
 
 - **Real-time feedback**: Complexity warnings appear directly in Xcode editor
 - **Accurate positioning**: Errors show at exact function locations
 - **Build integration**: Builds fail when thresholds are exceeded
-- **Configurable per target**: Different thresholds for different modules
+- **Shared configuration**: The same `.swift-complexity.yml` drives CLI, CI, and Xcode
 
 ![Xcode Output](docs/imgs/xcode-output.png)
 

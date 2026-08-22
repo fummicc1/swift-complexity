@@ -10,6 +10,7 @@ This directory contains user-facing documentation for swift-complexity.
 - [Complexity Metrics](complexity-metrics.md) - Understanding cyclomatic and cognitive complexity
 - [Type Coupling Metrics](coupling-metrics.md) - Fan-in, fan-out, instability, and the hotspot ranking
 - [CI Integration](ci-integration.md) - GitHub Action and Code Scanning setup
+- [Xcode Build Tool Plugin](xcode-plugin.md) - In-editor diagnostics on every build
 
 ## Quick Start
 
