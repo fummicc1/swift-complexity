@@ -39,6 +39,9 @@ let package = Package(
 
 1. Add the swift-complexity package to your Xcode project
 2. In Build Phases, add "SwiftComplexityPlugin" to Run Build Tool Plug-ins
+3. On the first build, Xcode asks you to trust the plugin — choose "Trust & Enable".
+   For command-line and CI builds, pass `-skipPackagePluginValidation` to
+   `xcodebuild`, otherwise the build stops at "Validate plug-in".
 
 ## Configuration
 
