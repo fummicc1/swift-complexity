@@ -427,8 +427,8 @@ public class OutputFormatter {
         let cyclomatic = function.cyclomaticComplexity
         let cognitive = function.cognitiveComplexity
 
-        let cyclomaticExceeds = !function.isSuppressed(.cyclomatic) && cyclomatic > threshold
-        let cognitiveExceeds = !function.isSuppressed(.cognitive) && cognitive > threshold
+        let cyclomaticExceeds = !function.isSuppressed(.cyclomatic) && cyclomatic >= threshold
+        let cognitiveExceeds = !function.isSuppressed(.cognitive) && cognitive >= threshold
 
         guard cyclomaticExceeds || cognitiveExceeds else { return nil }
 
