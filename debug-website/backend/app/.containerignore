@@ -3,7 +3,6 @@
 *.xcodeproj
 *.xcworkspace
 .swiftpm/
-Package.resolved
 xcuserdata/
 DerivedData/
 .git/

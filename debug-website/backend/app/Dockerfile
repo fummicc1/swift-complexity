@@ -1,7 +1,7 @@
 # ================================
 # Build stage
 # ================================
-FROM swift:6.1-jammy AS build
+FROM swift:6.2-jammy AS build
 
 # Install OS updates
 RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
@@ -16,11 +16,16 @@ WORKDIR /build
 
 # Copy only the backend app directory
 # The build context should be the backend app directory (. from this Dockerfile)
-# SwiftComplexityCore will be downloaded from GitHub via Package.swift
+# SwiftComplexityCore is fetched from GitHub at the commit pinned in Package.resolved
 COPY . .
 
-# Build with optimizations
-RUN swift build -c release --static-swift-stdlib
+# Build with optimizations.
+# The two -Xcxx flags are required on Linux: indexstore-db (a SwiftComplexityCore
+# dependency) has C++ targets that include libdispatch's dispatch.h and Block.h,
+# which live under the toolchain's lib/swift instead of clang's default search path.
+RUN swift build -c release --static-swift-stdlib \
+      -Xcxx -I/usr/lib/swift \
+      -Xcxx -I/usr/lib/swift/Block
 
 # ================================
 # Run stage

@@ -1,0 +1,101 @@
+name: Debug Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "debug-website/**"
+      - ".github/workflows/debug-website.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "debug-website/**"
+      - ".github/workflows/debug-website.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-image:
+    name: Backend container image
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      # Build the Dockerfile itself rather than running a native swift build:
+      # the image is what Cloudflare Containers deploys, and its toolchain
+      # version and C++ include flags are what drifted from the core package.
+      - name: Build image
+        run: docker build -t swift-complexity-api debug-website/backend/app
+
+      - name: Smoke test the API
+        run: |
+          docker run -d --name api -p 8080:8080 swift-complexity-api
+          for _ in $(seq 1 30); do
+            curl -fsS http://localhost:8080/health > /dev/null && break
+            sleep 1
+          done
+          curl -fsS http://localhost:8080/health | jq -e '.status == "ok"'
+          curl -fsS -X POST http://localhost:8080/api/v1/analyze \
+            -H 'Content-Type: application/json' \
+            -d '{"code":"func f(a: Bool) { if a { print(1) } }","fileName":"x.swift"}' \
+            | jq -e '.result.functions[0].cyclomaticComplexity == 2'
+
+      - name: Show container logs
+        if: always()
+        run: docker logs api || true
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: debug-website/frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: debug-website/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Build
+        run: npm run build
+
+  worker:
+    name: Worker
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: debug-website/backend/worker
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: debug-website/backend/worker/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
