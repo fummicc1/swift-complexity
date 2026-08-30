@@ -40,7 +40,7 @@ final class AnalyzerControllerTests: XCTestCase {
 
         try await app.test(.POST, "api/v1/analyze", beforeRequest: { req in
             try req.content.encode(request)
-        }, afterResponse: { res async in
+        }, afterResponse: { res async throws in
             XCTAssertEqual(res.status, .ok)
             let response = try res.content.decode(AnalyzeResponse.self)
             XCTAssertEqual(response.result.functions.count, 1)
@@ -59,7 +59,7 @@ final class AnalyzerControllerTests: XCTestCase {
 
         try await app.test(.POST, "api/v1/analyze", beforeRequest: { req in
             try req.content.encode(request)
-        }, afterResponse: { res async in
+        }, afterResponse: { res async throws in
             XCTAssertEqual(res.status, .ok)
             let response = try res.content.decode(FormatResponse.self)
             XCTAssertTrue(response.formatted.contains("\"filePath\""))
@@ -76,7 +76,7 @@ final class AnalyzerControllerTests: XCTestCase {
 
         try await app.test(.POST, "api/v1/batch-analyze", beforeRequest: { req in
             try req.content.encode(request)
-        }, afterResponse: { res async in
+        }, afterResponse: { res async throws in
             XCTAssertEqual(res.status, .ok)
             let response = try res.content.decode(BatchAnalyzeResponse.self)
             XCTAssertEqual(response.results.count, 2)

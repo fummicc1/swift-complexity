@@ -5,7 +5,6 @@
 
 # Swift Package Manager
 .swiftpm/
-Package.resolved
 
 # Xcode
 xcuserdata/

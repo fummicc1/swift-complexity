@@ -21,7 +21,7 @@ struct AnalyzerController: RouteCollection {
         let sourceFile = Parser.parse(source: request.code)
 
         // Analyze complexity
-        let analyzer = ComplexityAnalyzer()
+        let analyzer = try ComplexityAnalyzer()
         let result = try await analyzer.analyze(
             sourceFile: sourceFile,
             filePath: request.fileName
@@ -54,7 +54,7 @@ struct AnalyzerController: RouteCollection {
     func batchAnalyze(req: Request) async throws -> BatchAnalyzeResponse {
         let request = try req.content.decode(BatchAnalyzeRequest.self)
 
-        let analyzer = ComplexityAnalyzer()
+        let analyzer = try ComplexityAnalyzer()
 
         let results = try await withThrowingTaskGroup(of: ComplexityResult.self) { group in
             for file in request.files {

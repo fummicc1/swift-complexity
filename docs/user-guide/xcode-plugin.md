@@ -10,6 +10,14 @@ same configuration and the same judgment as the CLI and CI.
   or later. SwiftPM skips the analysis for older tools versions because the
   plugin's build command declares no output files.
 - macOS 14 or later (inherited from swift-complexity's platform requirement).
+- Depend on swift-complexity by **commit or branch, not by version**.
+  swift-complexity depends on the untagged `indexstore-db`, and SwiftPM rejects a
+  version requirement (`from:` / `exact:`, or Xcode's "Up to Next Major") on a
+  package with such a dependency:
+  `package 'swift-complexity' is required using a stable-version but
+  'swift-complexity' depends on an unstable-version package 'indexstore-db'`.
+  Each release's commit is listed on the
+  [Releases](https://github.com/fummicc1/swift-complexity/releases) page.
 
 ## Setup
 
@@ -22,7 +30,11 @@ import PackageDescription
 let package = Package(
     name: "YourProject",
     dependencies: [
-        .package(url: "https://github.com/fummicc1/swift-complexity.git", from: "1.4.0")
+        // v1.4.0 — see Requirements for why this is a commit, not a version
+        .package(
+            url: "https://github.com/fummicc1/swift-complexity.git",
+            revision: "25f4446f7eb0cb530bebbaaecaef37418c28f8b6"
+        )
     ],
     targets: [
         .target(
@@ -37,7 +49,8 @@ let package = Package(
 
 ### Xcode Project
 
-1. Add the swift-complexity package to your Xcode project
+1. Add the swift-complexity package to your Xcode project with Dependency Rule
+   **Commit** (the release commit) or **Branch** — see Requirements
 2. In Build Phases, add "SwiftComplexityPlugin" to Run Build Tool Plug-ins
 3. On the first build, Xcode asks you to trust the plugin — choose "Trust & Enable".
    For command-line and CI builds, pass `-skipPackagePluginValidation` to

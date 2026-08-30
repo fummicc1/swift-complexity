@@ -7,7 +7,7 @@ A command-line tool to analyze Swift code complexity and quality metrics using s
 - **Multiple Complexity Metrics**: Supports cyclomatic complexity, cognitive complexity, LCOM4 cohesion, and type coupling analysis
 - **LCOM4 Class Cohesion**: High-precision class cohesion measurement using IndexStore-DB semantic analysis
 - **Type Coupling Metrics**: Semantic fan-in / fan-out / instability per type, plus a hotspot ranking that orders complexity violations by their blast radius ([details](docs/user-guide/coupling-metrics.md))
-- **Web-based Debug Interface**: Interactive browser-based complexity analyzer ([Try it online](https://swift-complexity.fummicc1.dev))
+- **Web-based Debug Interface**: Interactive browser-based analyzer for the syntax-only metrics — cyclomatic, cognitive, and inline suppression ([Try it online](https://swift-complexity.fummicc1.dev)); index-backed metrics stay CLI-only
 - **Xcode Integration**: Seamless integration with Xcode via Build Tool Plugin for complexity feedback during build phase
 - **Xcode Diagnostics**: Display complexity warnings and errors directly in Xcode editor with accurate line numbers
 - **Configurable Thresholds**: Set custom complexity thresholds via Xcode Build Settings or environment variables
@@ -27,6 +27,8 @@ A command-line tool to analyze Swift code complexity and quality metrics using s
 ### Web Interface (Try Online)
 
 Visit [swift-complexity.fummicc1.dev](https://swift-complexity.fummicc1.dev) to analyze Swift code instantly in your browser.
+
+The web interface is a debugging aid for the syntax-based metrics (cyclomatic and cognitive complexity, inline suppression). LCOM4 and type coupling need the index store of a compiled project, so they are available only in the CLI — see [Debug Website](#debug-website) for the full scope.
 
 ![Web Interface](docs/imgs/website.png)
 
@@ -204,7 +206,7 @@ See the [Usage Guide](docs/user-guide/usage.md#per-type-complexity-thresholds) f
 - **[Output Formats](docs/user-guide/output-formats.md)**: Text, JSON, XML, Xcode diagnostics, and SARIF format specifications
 - **[CI Integration](docs/user-guide/ci-integration.md)**: GitHub Action and Code Scanning setup
 - **[Development Guide](docs/development/DEVELOPMENT.md)**: Setup for contributors
-- **[Debug Website](debug-website/)**: Web-based interactive analyzer documentation
+- **[Debug Website](debug-website/)**: Web-based interactive analyzer for the syntax-only metrics (setup, API, and scope)
 
 ## Package Structure
 
@@ -222,6 +224,8 @@ Unified package with multiple components:
 - **Frontend**: Next.js application deployed on Cloudflare Workers
 - **Backend**: Vapor 4 API containerized on Cloudflare Containers.
 - **Live Demo**: [swift-complexity.fummicc1.dev](https://swift-complexity.fummicc1.dev)
+- **Scope**: Intentionally limited to what can be computed from source text alone — cyclomatic and cognitive complexity, `// swift-complexity:disable` suppression, and every CLI output format via the API. It exists to check analysis results quickly, not to replace the CLI.
+- **Not available on the web**: LCOM4 and type coupling (they read the index store that only `swift build` of a whole project produces), `.swift-complexity.yml` per-type thresholds, and the Xcode plugin / CI integrations. See [debug-website/README.md](debug-website/README.md#-scope) for details.
 
 ## Usage Examples
 
@@ -325,7 +329,11 @@ import PackageDescription
 let package = Package(
     name: "YourProject",
     dependencies: [
-        .package(url: "https://github.com/fummicc1/swift-complexity.git", from: "1.4.0")
+        // v1.4.0 — pin the release commit; a version requirement does not resolve (see below)
+        .package(
+            url: "https://github.com/fummicc1/swift-complexity.git",
+            revision: "25f4446f7eb0cb530bebbaaecaef37418c28f8b6"
+        )
     ],
     targets: [
         .target(
@@ -338,12 +346,19 @@ let package = Package(
 )
 ```
 
+Pin the release commit rather than a version: swift-complexity depends on the
+untagged `indexstore-db`, and SwiftPM rejects a version requirement (`from:` /
+`exact:`) on a package with such a dependency. Each release's commit is listed on
+the [Releases](https://github.com/fummicc1/swift-complexity/releases) page.
+
 The consuming package must declare `// swift-tools-version: 6.0` or later;
 SwiftPM skips the plugin's analysis command for older tools versions.
 
 ### Xcode Project Integration
 
-1. Add swift-complexity package to your Xcode project
+1. Add swift-complexity package to your Xcode project with Dependency Rule
+   **Commit** (the release commit above) or **Branch** — a version rule fails to
+   resolve for the reason described above
 2. In Build Phases, add "SwiftComplexityPlugin" to Run Build Tool Plug-ins
 3. Configure threshold in Build Settings (optional)
 

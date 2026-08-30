@@ -8,8 +8,33 @@ Web-based debugging interface for [swift-complexity](https://github.com/fummicc1
 - **Real-time Analysis**: Instant complexity calculation for Swift code
 - **Multiple Metrics**: Both cyclomatic and cognitive complexity
 - **Visual Results**: Color-coded complexity scores and summary statistics
-- **Multiple Output Formats**: JSON, XML, Text, and Xcode formats
+- **Multiple Output Formats**: Text, JSON, XML, Xcode, and SARIF via the API
 - **Responsive Design**: Works on desktop and mobile devices
+
+## 🧭 Scope
+
+The website exists to check swift-complexity's analysis results quickly in a browser
+(see [#11](https://github.com/fummicc1/swift-complexity/issues/11)). It deliberately
+covers only the analyses that can be computed from source text alone; the CLI stays
+the reference implementation.
+
+**Supported**
+
+- Cyclomatic and cognitive complexity per function, using the same calculators as the CLI
+- `// swift-complexity:disable` inline suppression, reported as `suppressedMetrics` in the API response
+- Every CLI output format via the API's `format` parameter, plus `threshold` filtering
+
+**Not supported, by design**
+
+- **LCOM4 and type coupling**: both read the index store that only `swift build` of a
+  whole project produces. A pasted snippet has no index, so these stay CLI-only.
+- **`.swift-complexity.yml` per-type thresholds**: the API takes a single `threshold`
+  value; there is no config input.
+- **Xcode Build Tool Plugin and GitHub Action**: separate entry points over the same
+  core, with nothing to run in a browser.
+
+New web features are added only when they fit this rule; anything that needs a build
+or an index belongs to the CLI.
 
 ## 🏗️ Architecture
 
@@ -23,8 +48,8 @@ Web-based debugging interface for [swift-complexity](https://github.com/fummicc1
 
 ### Backend (Vapor)
 - **Framework**: Vapor 4
-- **Language**: Swift 6.1
-- **Core Library**: SwiftComplexityCore
+- **Language**: Swift 6.2
+- **Core Library**: SwiftComplexityCore, pinned to a release commit in `backend/app/Package.swift`
 - **Deployment**: Cloudflare Containers
 
 ## 🚀 Getting Started
@@ -32,7 +57,7 @@ Web-based debugging interface for [swift-complexity](https://github.com/fummicc1
 ### Prerequisites
 
 - Node.js 20+ (for frontend)
-- Swift 6.1+ (for backend)
+- Swift 6.2+ (for backend; required by the swift-complexity core package)
 - Docker (for containerized deployment)
 
 ### Local Development
@@ -40,13 +65,23 @@ Web-based debugging interface for [swift-complexity](https://github.com/fummicc1
 #### Backend
 
 ```bash
-cd debug-website/backend
+cd debug-website/backend/app
 
 # Install dependencies
 swift package resolve
 
 # Run development server
 swift run App serve --hostname 0.0.0.0 --port 8080
+```
+
+On Linux, pass the same C++ include flags the Dockerfile uses, because
+indexstore-db (a SwiftComplexityCore dependency) includes libdispatch headers
+that live under the toolchain's `lib/swift`:
+
+```bash
+swift build \
+  -Xcxx -I<toolchain>/usr/lib/swift \
+  -Xcxx -I<toolchain>/usr/lib/swift/Block
 ```
 
 The backend API will be available at `http://localhost:8080`.
@@ -77,7 +112,7 @@ The frontend will be available at `http://localhost:3000` (npm run dev) or `http
 #### Backend Tests
 
 ```bash
-cd debug-website/backend
+cd debug-website/backend/app
 swift test
 ```
 
@@ -216,7 +251,9 @@ The backend includes a multi-stage Dockerfile optimized for Cloudflare Container
 
 ## 📝 Development Notes
 
-- Backend uses Swift 6.1 with strict concurrency checking
+- Backend uses Swift 6.2 with strict concurrency checking
+- Backend pins swift-complexity to a release commit (`revision:` in `backend/app/Package.swift` — SwiftPM rejects a version requirement because the core depends on the untagged indexstore-db); move the revision after a core release to pick up analyzer changes, then rebuild and redeploy the container
+- `.github/workflows/debug-website.yml` builds the container image, smoke-tests the API, and type-checks the frontend and worker whenever `debug-website/` changes
 - Frontend uses React 19 with Next.js App Router
 - OpenNext adapter (`@opennextjs/cloudflare`) enables Next.js on Cloudflare Workers
 - Image optimization is disabled for Workers compatibility
