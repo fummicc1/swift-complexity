@@ -85,9 +85,11 @@ jobs:
           swift --version
 
       - name: Build and test
+        env:
+          SWIFT_COMPLEXITY_EXPECT_INDEXSTORE_TRAIT: "1"
         run: |
-          swift build --configuration release
-          swift test
+          swift build --configuration release --traits IndexStore
+          swift test --traits IndexStore
 
   build-artifacts:
     name: Build Release Artifacts
@@ -140,13 +142,18 @@ jobs:
 
       - name: Build for ${{ matrix.platform }}-${{ matrix.arch }}
         run: |
+          # --traits IndexStore: release binaries always ship LCOM4/coupling;
+          # the trait is off by default only so the package builds on
+          # platforms where indexstore-db cannot.
           if [ "${{ matrix.platform }}" = "macos" ]; then
             swift build \
               --configuration release \
+              --traits IndexStore \
               --arch ${{ matrix.arch }} \
               --product SwiftComplexityCLI
             swift build \
               --configuration release \
+              --traits IndexStore \
               --arch ${{ matrix.arch }} \
               --product SwiftComplexityMCP
           else
@@ -158,12 +165,14 @@ jobs:
             TOOLCHAIN_USR=$(ls -d ${SWIFTLY_HOME}/toolchains/*/usr 2>/dev/null | head -1)
             swift build \
               --configuration release \
+              --traits IndexStore \
               --static-swift-stdlib \
               --product SwiftComplexityCLI \
               -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
               -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
             swift build \
               --configuration release \
+              --traits IndexStore \
               --static-swift-stdlib \
               --product SwiftComplexityMCP \
               -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
@@ -352,7 +361,8 @@ jobs:
           git clone https://github.com/${{ github.repository }}.git
           cd swift-complexity
           git checkout v${VERSION}
-          swift build -c release
+          # --traits IndexStore enables LCOM4 and coupling (off by default)
+          swift build -c release --traits IndexStore
           \`\`\`
 
           ## Verification

@@ -127,6 +127,10 @@ cannot contradict it.
 
 - Requires a **built index store** (`swift build` first). Index freshness is
   your responsibility: analyze after building, not after editing.
+- Requires a swift-complexity binary built with the `IndexStore` trait.
+  Homebrew and release binaries include it; when building from source, run
+  `swift build --traits IndexStore` (a default build exits with a rebuild
+  hint on `--coupling`).
 - Not available through the GitHub Action's zero-toolchain path (bare
   runners have no build). Run it in a job that builds your package — see
   [CI Integration](ci-integration.md).

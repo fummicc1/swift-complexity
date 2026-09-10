@@ -155,32 +155,35 @@ import Testing
             try expectMatchesGolden(output, "complexity_plain")
         }
 
-        @Test("LCOM4 JSON output matches the pre-coupling golden")
-        func lcom4OutputMatchesGolden() async throws {
-            // The store only needs to exist: fixture types are not indexed, so
-            // LCOM4 resolves through the deterministic syntax fallback — exactly
-            // how the golden was generated. `swift test` always builds first, so
-            // the debug index store is present in every supported flow.
-            let indexStore =
-                repoRoot
-                .appendingPathComponent(".build")
-                .appendingPathComponent("debug")
-                .appendingPathComponent("index")
-                .appendingPathComponent("store")
-            try #require(
-                FileManager.default.fileExists(atPath: indexStore.path),
-                "debug index store missing — run via `swift test` (not a bare Xcode test action)")
+        #if IndexStore
+            @Test("LCOM4 JSON output matches the pre-coupling golden")
+            func lcom4OutputMatchesGolden() async throws {
+                // The store only needs to exist: fixture types are not indexed, so
+                // LCOM4 resolves through the deterministic syntax fallback — exactly
+                // how the golden was generated. `swift test` always builds first, so
+                // the debug index store is present in every supported flow.
+                let indexStore =
+                    repoRoot
+                    .appendingPathComponent(".build")
+                    .appendingPathComponent("debug")
+                    .appendingPathComponent("index")
+                    .appendingPathComponent("store")
+                try #require(
+                    FileManager.default.fileExists(atPath: indexStore.path),
+                    "debug index store missing — run via `swift test` (not a bare Xcode test action)"
+                )
 
-            let analyzer = try ComplexityAnalyzer(indexStorePath: indexStore)
-            let processor = FileProcessor(analyzer: analyzer)
-            let results = try await processor.processFiles(
-                at: fixturePaths(), options: ProcessingOptions())
+                let analyzer = try ComplexityAnalyzer(indexStorePath: indexStore)
+                let processor = FileProcessor(analyzer: analyzer)
+                let results = try await processor.processFiles(
+                    at: fixturePaths(), options: ProcessingOptions())
 
-            let output = OutputFormatter().format(
-                results: results, format: .json, options: OutputOptions(showLCOM4: true))
+                let output = OutputFormatter().format(
+                    results: results, format: .json, options: OutputOptions(showLCOM4: true))
 
-            try expectMatchesGolden(output, "complexity_lcom4")
-        }
+                try expectMatchesGolden(output, "complexity_lcom4")
+            }
+        #endif
     }
 
 #endif

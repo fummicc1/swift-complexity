@@ -111,6 +111,21 @@ struct CLIValidationTests {
         }
     }
 
+    #if !IndexStore
+        @Test("Index-backed flags fail fast when built without the IndexStore trait")
+        func indexBackedFlagsUnavailableWithoutTrait() async throws {
+            for flag in ["--lcom4", "--coupling"] {
+                let parsed = try ComplexityCommand.parse([
+                    "Sources", flag, "--index-store-path", ".build/debug/index/store",
+                ])
+                await #expect(throws: ExitCode.self) {
+                    var command = parsed
+                    try await command.run()
+                }
+            }
+        }
+    #endif
+
     @Test("Mutually exclusive flags validation concept")
     func mutuallyExclusiveFlagsValidation() {
         // This test validates the concept of mutually exclusive flags

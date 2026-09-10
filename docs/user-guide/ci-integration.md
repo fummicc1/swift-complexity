@@ -86,7 +86,9 @@ diff and in the repository's Security tab.
   build of your package produces, and the action runs on bare runners
   without building anything. To use them in CI, run the plain CLI in a job
   that executes `swift build` first (see below), passing
-  `--index-store-path .build/debug/index/store`.
+  `--index-store-path .build/debug/index/store`. The CLI itself must carry
+  the `IndexStore` trait: Homebrew and release binaries do; a from-source
+  build needs `swift build --traits IndexStore`.
 - Per-type thresholds and inline suppression comments work in CI exactly as
   they do locally — see the [Usage Guide](usage.md) for details.
 

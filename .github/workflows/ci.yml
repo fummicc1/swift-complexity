@@ -63,7 +63,7 @@ jobs:
 
       - name: Build package (macOS)
         if: runner.os == 'macOS'
-        run: swift build --configuration release
+        run: swift build --configuration release --traits IndexStore
 
       - name: Build package (Linux)
         if: runner.os == 'Linux'
@@ -83,19 +83,24 @@ jobs:
           # --static-swift-stdlib matches the release build so static linking
           # breakage is caught on every PR, not at release time
           swift build --configuration release --static-swift-stdlib \
+            --traits IndexStore \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
 
       - name: Run tests (macOS)
         if: runner.os == 'macOS'
-        run: swift test
+        env:
+          SWIFT_COMPLEXITY_EXPECT_INDEXSTORE_TRAIT: "1"
+        run: swift test --traits IndexStore
 
       - name: Run tests (Linux)
         if: runner.os == 'Linux'
+        env:
+          SWIFT_COMPLEXITY_EXPECT_INDEXSTORE_TRAIT: "1"
         run: |
           SWIFTLY_HOME="${HOME}/.local/share/swiftly"
           TOOLCHAIN_USR=$(ls -d ${SWIFTLY_HOME}/toolchains/*/usr 2>/dev/null | head -1)
-          swift test \
+          swift test --traits IndexStore \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
 
@@ -103,7 +108,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           # Build with debug configuration to generate IndexStore
-          swift build
+          swift build --traits IndexStore
           # Run LCOM4 analysis using compiled binary directly
           .build/debug/SwiftComplexityCLI Sources --lcom4 \
             --index-store-path .build/debug/index/store \
@@ -118,7 +123,7 @@ jobs:
           TOOLCHAIN_USR="${TOOLCHAIN}/usr"
           echo "Using toolchain: ${TOOLCHAIN}"
           # Build with debug configuration to generate IndexStore
-          swift build \
+          swift build --traits IndexStore \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
             -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
           # Run LCOM4 analysis using compiled binary directly (avoids rebuild)
@@ -173,6 +178,57 @@ jobs:
           jq -e '[.files[].typeCouplings[]?] | any(.name == "SuppressedMetric" and .fanOut == 0 and .fanIn >= 5)' coupling-report.json
           jq -e '[.files[].typeCouplings[]?] | any(.name == "OutputFormatter" and .fanOut >= 15)' coupling-report.json
           grep -q "coupling:" coupling-diag.txt
+
+  default-traits:
+    name: Default traits (SPI parity)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Xcode
+        if: runner.os == 'macOS'
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.1"
+
+      - name: Setup Swift
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev pkg-config python3-lldb-13
+            curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
+            tar zxf swiftly-$(uname -m).tar.gz
+            ./swiftly init --verbose --assume-yes --skip-install
+            . ~/.local/share/swiftly/env.sh
+            swiftly install 6.2
+            echo "$(dirname $(which swift))" >> $GITHUB_PATH
+          fi
+          swift --version
+
+      # Exactly what Swift Package Index and a consumer's plain `swift build`
+      # run: no traits, no -Xcxx include flags. This is the job that keeps
+      # the Linux/Wasm compatibility badges green.
+      - name: Build with default traits
+        run: swift build
+
+      - name: Test with default traits
+        run: swift test
+
+      - name: Index-backed flags fail with a rebuild hint
+        run: |
+          set +e
+          OUTPUT=$(.build/debug/SwiftComplexityCLI Sources --lcom4 \
+            --index-store-path .build/debug/index/store 2>&1)
+          STATUS=$?
+          set -e
+          echo "$OUTPUT"
+          test "$STATUS" -ne 0
+          echo "$OUTPUT" | grep -q -- "--traits IndexStore"
 
   action-test:
     name: Action Test

@@ -27,6 +27,14 @@ let package = Package(
       targets: ["SwiftComplexityPlugin"]
     ),
   ],
+  traits: [
+    // Off by default: Swift Package Index, Wasm, and a plain `swift build` on Linux
+    // cannot pass the libdispatch include flags indexstore-db needs to compile.
+    .trait(
+      name: "IndexStore",
+      description: "Index-backed analyses (LCOM4 cohesion, type coupling) via IndexStoreDB"
+    )
+  ],
   dependencies: [
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0"),
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
@@ -44,7 +52,9 @@ let package = Package(
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftParser", package: "swift-syntax"),
         // IndexStore-DB integration (for LCOM4 semantic analysis)
-        .product(name: "IndexStoreDB", package: "indexstore-db"),
+        .product(
+          name: "IndexStoreDB", package: "indexstore-db",
+          condition: .when(traits: ["IndexStore"])),
         // YAML decoding for per-type threshold configuration
         .product(name: "Yams", package: "Yams"),
       ],
@@ -64,6 +74,9 @@ let package = Package(
         "SwiftComplexityCore",
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftParser", package: "swift-syntax"),
+        .product(
+          name: "IndexStoreDB", package: "indexstore-db",
+          condition: .when(traits: ["IndexStore"])),
       ],
       path: "Tests/SwiftComplexityCoreTests",
       resources: [

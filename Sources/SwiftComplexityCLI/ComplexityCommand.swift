@@ -248,22 +248,30 @@ public struct ComplexityCommand: AsyncParsableCommand {
         let indexBackedFlag: String? = lcom4 ? "--lcom4" : (coupling ? "--coupling" : nil)
         guard let flag = indexBackedFlag else { return }
 
-        if indexStorePath == nil {
-            print("Error: \(flag) requires --index-store-path option.")
+        #if !IndexStore
+            print("Error: \(flag) is not available in this build.")
             print(
-                "Example: swift-complexity Sources \(flag) --index-store-path .build/debug/index/store"
+                "Rebuild with 'swift build --traits IndexStore' or install a release binary (Homebrew, GitHub Releases)."
             )
             throw ExitCode.failure
-        }
-
-        #if os(Linux)
-            if toolchainPath == nil {
-                print("Error: \(flag) requires --toolchain-path option on Linux.")
+        #else
+            if indexStorePath == nil {
+                print("Error: \(flag) requires --index-store-path option.")
                 print(
-                    "Example: swift-complexity Sources \(flag) --index-store-path .build/debug/index/store --toolchain-path ~/.local/share/swiftly/toolchains/swift-6.2"
+                    "Example: swift-complexity Sources \(flag) --index-store-path .build/debug/index/store"
                 )
                 throw ExitCode.failure
             }
+
+            #if os(Linux)
+                if toolchainPath == nil {
+                    print("Error: \(flag) requires --toolchain-path option on Linux.")
+                    print(
+                        "Example: swift-complexity Sources \(flag) --index-store-path .build/debug/index/store --toolchain-path ~/.local/share/swiftly/toolchains/swift-6.2"
+                    )
+                    throw ExitCode.failure
+                }
+            #endif
         #endif
     }
 

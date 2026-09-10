@@ -67,7 +67,8 @@ enum ToolDefinitions {
                 "index_store_path": .object([
                     "type": .string("string"),
                     "description": .string(
-                        "IndexStore path for LCOM4 analysis (required when lcom4 is true)"),
+                        "IndexStore path for LCOM4 analysis (required when lcom4 is true; needs a release binary or a build with --traits IndexStore)"
+                    ),
                 ]),
                 "toolchain_path": .object([
                     "type": .string("string"),

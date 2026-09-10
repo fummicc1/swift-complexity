@@ -67,6 +67,32 @@ extension TypeCoupling: CustomStringConvertible {
     }
 }
 
+/// Attribution accounting for one coupling run. Every reference lands in
+/// exactly one attributed/dropped bucket, so:
+/// refsTotal == attributedByContainedBy + attributedByBaseOf
+///            + attributedByLocation + droppedNonProjectSymbol
+///            + droppedTypealias + droppedUnattributable.
+/// Self-references are attributed but produce no edge; they are additionally
+/// counted in `selfReferencesSkipped`.
+///
+/// Public so the CLI can report attribution quality to stderr; construction
+/// and mutation stay internal to the analysis.
+public struct CouplingDiagnostics: Sendable, Equatable {
+    public internal(set) var refsTotal = 0
+    public internal(set) var attributedByContainedBy = 0
+    public internal(set) var attributedByBaseOf = 0
+    public internal(set) var attributedByLocation = 0
+    public internal(set) var droppedNonProjectSymbol = 0
+    public internal(set) var droppedTypealias = 0
+    public internal(set) var droppedUnattributable = 0
+    public internal(set) var selfReferencesSkipped = 0
+
+    /// References that resolved to a source type (self-references included).
+    public var attributedTotal: Int {
+        attributedByContainedBy + attributedByBaseOf + attributedByLocation
+    }
+}
+
 /// Aggregated coupling statistics for one file's types.
 public struct CouplingSummary: Codable, Sendable {
     public let totalTypes: Int
