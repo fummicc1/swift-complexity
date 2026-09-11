@@ -97,13 +97,13 @@ swift-complexity is a CLI tool that analyzes Swift code complexity using SwiftSy
 - Focus on "why" rather than "what"
 - Auto-formatting via lefthook swift-format
 
-### Testing
+### Testing Rules
 
 - Always create tests for new features
 - Place fixture files in `Tests/SwiftComplexityCoreTests/Fixtures/`
 - Document expected values in comments
 
-### Code Quality
+### Code Quality Rules
 
 - Auto-apply swift-format (pre-commit)
 - Minimize public API surface
