@@ -28,8 +28,6 @@ let package = Package(
     ),
   ],
   traits: [
-    // Off by default: Swift Package Index, Wasm, and a plain `swift build` on Linux
-    // cannot pass the libdispatch include flags indexstore-db needs to compile.
     .trait(
       name: "IndexStore",
       description: "Index-backed analyses (LCOM4 cohesion, type coupling) via IndexStoreDB"

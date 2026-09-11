@@ -6,9 +6,7 @@ import Testing
 @Suite("IndexStore trait")
 struct IndexStoreTraitTests {
 
-    /// CI exports this in every `--traits IndexStore` step. If the trait ever
-    /// stops reaching the test module, the index-backed suites are compiled
-    /// out silently; this turns that into a failure instead of a green run.
+    /// CI sets this env var in every --traits IndexStore step; without this check a trait that stops reaching the test module would silently compile the index suites out
     @Test("Trait reaches the test module when CI expects it")
     func traitReachesTests() {
         guard ProcessInfo.processInfo.environment["SWIFT_COMPLEXITY_EXPECT_INDEXSTORE_TRAIT"] != nil
