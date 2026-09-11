@@ -12,10 +12,16 @@
 ```bash
 git clone <repository-url>
 cd swift-complexity
-swift build --configuration release
+swift build --configuration release --traits IndexStore
 ```
 
 The executable will be available at `.build/release/swift-complexity`.
+
+`--traits IndexStore` enables the index-backed metrics (`--lcom4`, `--coupling`).
+It is off by default so the package builds on platforms where its
+`indexstore-db` dependency cannot; a build without it still provides every
+syntax-based metric and prints a rebuild hint if an index-backed flag is used.
+Homebrew and GitHub Releases binaries always include it.
 
 ### Option 2: Development Installation
 
@@ -24,7 +30,7 @@ For development or contributing:
 ```bash
 git clone <repository-url>
 cd swift-complexity
-swift build
+swift build --traits IndexStore
 ```
 
 Run with:

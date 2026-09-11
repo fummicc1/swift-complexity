@@ -1,5 +1,4 @@
 import Foundation
-import IndexStoreDB
 import SwiftSyntax
 
 /// Nominal Type kind for LCOM4 cohesion analysis (class/struct/actor)
@@ -12,14 +11,6 @@ enum NominalTypeKind {
     case `class`
     case `struct`
     case actor
-
-    var symbolKind: IndexSymbolKind {
-        switch self {
-        case .class: return .class
-        case .struct: return .struct
-        case .actor: return .class  // actor is also handled as IndexSymbolKind.class
-        }
-    }
 }
 
 /// Information about detected Nominal Type

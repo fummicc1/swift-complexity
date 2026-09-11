@@ -10,13 +10,15 @@ swift-complexity is a CLI tool that analyzes Swift code complexity using SwiftSy
 
 ### Build & Run
 
-- `swift build` - Build the executable
+- `swift build` - Build with default traits (syntax-based metrics only; this is what Swift Package Index and consumers run)
+- `swift build --traits IndexStore` - Build with LCOM4 / coupling (pulls in indexstore-db; release binaries use this)
 - `swift run swift-complexity` - Run the CLI tool  
 - `swift run swift-complexity -- --help` - Show CLI help (note the `--` separator)
 
 ### Testing
 
-- `swift test` - Run all tests
+- `swift test` - Run all default-trait tests
+- `swift test --traits IndexStore` - Also run the index-backed suites (must be run from the CLI; Xcode's test action ignores traits)
 - `swift test --filter <test-name>` - Run specific test
 - `swift test --parallel` - Run tests in parallel
 
@@ -95,13 +97,13 @@ swift-complexity is a CLI tool that analyzes Swift code complexity using SwiftSy
 - Focus on "why" rather than "what"
 - Auto-formatting via lefthook swift-format
 
-### Testing
+### Testing Rules
 
 - Always create tests for new features
 - Place fixture files in `Tests/SwiftComplexityCoreTests/Fixtures/`
 - Document expected values in comments
 
-### Code Quality
+### Code Quality Rules
 
 - Auto-apply swift-format (pre-commit)
 - Minimize public API surface

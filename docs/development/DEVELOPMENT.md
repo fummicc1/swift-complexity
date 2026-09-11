@@ -15,6 +15,20 @@ cd swift-complexity
 swift build
 ```
 
+A plain `swift build` is the default-trait build: every syntax-based metric,
+no `indexstore-db`. This is what Swift Package Index and consumers run, so keep
+it green. To work on LCOM4 or coupling, enable the `IndexStore` trait:
+
+```bash
+swift build --traits IndexStore
+swift test --traits IndexStore
+```
+
+Switching the trait recompiles the package (it changes compile flags), so
+stick to one mode per `.build` when iterating. Xcode's test action ignores
+traits and only runs the default-trait suites; run the index-backed tests from
+the command line.
+
 ### 2. Code Formatting
 
 This project uses `swift-format` for consistent code style via lefthook.
@@ -44,7 +58,8 @@ swift-format -ri Sources Tests
 ### 3. Running Tests
 
 ```bash
-swift test
+swift test                       # default traits (syntax-only)
+swift test --traits IndexStore   # adds the LCOM4 / coupling suites
 ```
 
 ### 4. Building and Running

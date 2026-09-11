@@ -10,13 +10,16 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
     private let cognitiveCalculator: CognitiveComplexityCalculator
     private let functionDetector: FunctionDetector
     private let nominalTypeDetector: NominalTypeDetector
-    private let lcomCalculator: SemanticLCOMCalculator?
     private let enableLCOM4: Bool
 
-    /// The index store opened for this analyzer, shared with other
-    /// index-backed passes (coupling) so the database is populated once.
-    /// Immutable and Sendable, so cross-actor access needs no await.
-    let sharedIndexStore: SharedIndexStore?
+    #if IndexStore
+        private let lcomCalculator: SemanticLCOMCalculator?
+
+        /// The index store opened for this analyzer, shared with other
+        /// index-backed passes (coupling) so the database is populated once.
+        /// Immutable and Sendable, so cross-actor access needs no await.
+        let sharedIndexStore: SharedIndexStore?
+    #endif
 
     /// Initialize the analyzer
     /// - Parameters:
@@ -36,14 +39,21 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
 
         // LCOM4: High-accuracy (90-95%) semantic analysis with IndexStore-DB integration
         if let indexStorePath = indexStorePath {
-            let store = try IndexStoreService.open(
-                indexStorePath: indexStorePath, toolchainPath: toolchainPath)
-            self.sharedIndexStore = store
-            self.lcomCalculator = lcom4Enabled ? SemanticLCOMCalculator(indexStore: store) : nil
-            self.enableLCOM4 = lcom4Enabled
+            #if IndexStore
+                let store = try IndexStoreService.open(
+                    indexStorePath: indexStorePath, toolchainPath: toolchainPath)
+                self.sharedIndexStore = store
+                self.lcomCalculator =
+                    lcom4Enabled ? SemanticLCOMCalculator(indexStore: store) : nil
+                self.enableLCOM4 = lcom4Enabled
+            #else
+                throw IndexStoreError.unavailableInThisBuild
+            #endif
         } else {
-            self.sharedIndexStore = nil
-            self.lcomCalculator = nil
+            #if IndexStore
+                self.sharedIndexStore = nil
+                self.lcomCalculator = nil
+            #endif
             self.enableLCOM4 = false
         }
     }
@@ -76,43 +86,45 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
         // LCOM4 calculation (only if enabled)
         var classCohesions: [ClassCohesion]? = nil
 
-        if enableLCOM4, let lcomCalculator = lcomCalculator {
-            let nominalTypes = nominalTypeDetector.detectTypes(in: sourceFile)
-            var cohesions: [ClassCohesion] = []
+        #if IndexStore
+            if enableLCOM4, let lcomCalculator = lcomCalculator {
+                let nominalTypes = nominalTypeDetector.detectTypes(in: sourceFile)
+                var cohesions: [ClassCohesion] = []
 
-            for detectedType in nominalTypes {
-                let lcom4Value = try await lcomCalculator.calculate(for: detectedType)
+                for detectedType in nominalTypes {
+                    let lcom4Value = try await lcomCalculator.calculate(for: detectedType)
 
-                // Calculate member counts
-                let (methods, properties) = extractMemberCounts(from: detectedType.members)
+                    // Calculate member counts
+                    let (methods, properties) = extractMemberCounts(from: detectedType.members)
 
-                // Convert NominalTypeKind to NominalType
-                let nominalType: NominalType
-                switch detectedType.type {
-                case .class:
-                    nominalType = .class
-                case .struct:
-                    nominalType = .struct
-                case .actor:
-                    nominalType = .actor
+                    // Convert NominalTypeKind to NominalType
+                    let nominalType: NominalType
+                    switch detectedType.type {
+                    case .class:
+                        nominalType = .class
+                    case .struct:
+                        nominalType = .struct
+                    case .actor:
+                        nominalType = .actor
+                    }
+
+                    let cohesion = ClassCohesion(
+                        name: detectedType.name,
+                        type: nominalType,
+                        lcom4: lcom4Value,
+                        methodCount: methods,
+                        propertyCount: properties,
+                        location: detectedType.location,
+                        suppressedMetrics: detectedType.suppressedMetrics.isEmpty
+                            ? nil : detectedType.suppressedMetrics
+                    )
+
+                    cohesions.append(cohesion)
                 }
 
-                let cohesion = ClassCohesion(
-                    name: detectedType.name,
-                    type: nominalType,
-                    lcom4: lcom4Value,
-                    methodCount: methods,
-                    propertyCount: properties,
-                    location: detectedType.location,
-                    suppressedMetrics: detectedType.suppressedMetrics.isEmpty
-                        ? nil : detectedType.suppressedMetrics
-                )
-
-                cohesions.append(cohesion)
+                classCohesions = cohesions.isEmpty ? nil : cohesions
             }
-
-            classCohesions = cohesions.isEmpty ? nil : cohesions
-        }
+        #endif
 
         return ComplexityResult(
             filePath: filePath,

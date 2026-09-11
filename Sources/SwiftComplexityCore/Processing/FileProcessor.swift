@@ -139,18 +139,22 @@ public actor FileProcessor: FileProcessing {
         analyzedFiles: [String],
         typeRanges: [String: TypeRangeIndex]
     ) async throws -> [ComplexityResult] {
-        guard let indexStore = analyzer.sharedIndexStore else {
+        #if IndexStore
+            guard let indexStore = analyzer.sharedIndexStore else {
+                throw FileProcessorError.indexStoreRequired
+            }
+
+            let calculator = TypeCouplingCalculator(indexStore: indexStore)
+            let (byFile, diagnostics) = await calculator.calculate(
+                analyzedFiles: analyzedFiles, typeRanges: typeRanges)
+            lastCouplingDiagnostics = diagnostics
+
+            // Every result gains coupling fields; an empty array (not nil) marks
+            // "coupling ran, this file defines no types".
+            return results.map { $0.attaching(typeCouplings: byFile[$0.filePath] ?? []) }
+        #else
             throw FileProcessorError.indexStoreRequired
-        }
-
-        let calculator = TypeCouplingCalculator(indexStore: indexStore)
-        let (byFile, diagnostics) = await calculator.calculate(
-            analyzedFiles: analyzedFiles, typeRanges: typeRanges)
-        lastCouplingDiagnostics = diagnostics
-
-        // Every result gains coupling fields; an empty array (not nil) marks
-        // "coupling ran, this file defines no types".
-        return results.map { $0.attaching(typeCouplings: byFile[$0.filePath] ?? []) }
+        #endif
     }
 
     private func collectSwiftFiles(from paths: [String], options: ProcessingOptions) async throws
