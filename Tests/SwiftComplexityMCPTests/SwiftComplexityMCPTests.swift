@@ -82,7 +82,7 @@ struct AnalyzeCodeStringHandlerTests {
     /// Helper to extract text content from a CallTool.Result
     private func textContent(_ result: CallTool.Result) -> String? {
         result.content.first.flatMap {
-            if case .text(let t) = $0 { return t }
+            if case .text(let t, _, _) = $0 { return t }
             return nil
         }
     }
@@ -102,7 +102,7 @@ struct AnalyzeCodeStringHandlerTests {
 
         #expect(result.isError != true)
         let text = result.content.first.flatMap {
-            if case .text(let t) = $0 { return t }
+            if case .text(let t, _, _) = $0 { return t }
             return nil
         }
         #expect(text != nil)
@@ -120,7 +120,7 @@ struct AnalyzeCodeStringHandlerTests {
 
         #expect(result.isError != true)
         let text = result.content.first.flatMap {
-            if case .text(let t) = $0 { return t }
+            if case .text(let t, _, _) = $0 { return t }
             return nil
         }
         #expect(text?.contains("test.swift") == true)
@@ -169,7 +169,7 @@ struct AnalyzeComplexityHandlerValidationTests {
         #expect(result.isError == true)
 
         let text = result.content.first.flatMap {
-            if case .text(let t) = $0 { return t }
+            if case .text(let t, _, _) = $0 { return t }
             return nil
         }
         #expect(text?.contains("mutually exclusive") == true)
@@ -185,7 +185,7 @@ struct AnalyzeComplexityHandlerValidationTests {
         #expect(result.isError == true)
 
         let text = result.content.first.flatMap {
-            if case .text(let t) = $0 { return t }
+            if case .text(let t, _, _) = $0 { return t }
             return nil
         }
         #expect(text?.contains("index_store_path") == true)
@@ -330,7 +330,7 @@ struct ThresholdFilteringTests {
 struct AnalyzeComplexityConfigPathTests {
     private func textContent(_ result: CallTool.Result) -> String? {
         result.content.first.flatMap {
-            if case .text(let t) = $0 { return t }
+            if case .text(let t, _, _) = $0 { return t }
             return nil
         }
     }
@@ -416,7 +416,7 @@ struct ToolRouterTests {
         #expect(result.isError == true)
 
         let text = result.content.first.flatMap {
-            if case .text(let t) = $0 { return t }
+            if case .text(let t, _, _) = $0 { return t }
             return nil
         }
         #expect(text?.contains("Unknown tool") == true)
