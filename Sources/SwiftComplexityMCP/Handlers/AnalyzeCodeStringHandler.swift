@@ -8,7 +8,9 @@ enum AnalyzeCodeStringHandler {
         // Extract required parameter
         guard let code = ParamExtractor.string("code", from: arguments) else {
             return .init(
-                content: [.text("Error: 'code' parameter is required")],
+                content: [
+                    .text(text: "Error: 'code' parameter is required", annotations: nil, _meta: nil)
+                ],
                 isError: true)
         }
 
@@ -28,10 +30,15 @@ enum AnalyzeCodeStringHandler {
             )
             let output = formatter.format(results: [result], format: .json, options: outputOptions)
 
-            return .init(content: [.text(output)], isError: false)
+            return .init(
+                content: [.text(text: output, annotations: nil, _meta: nil)], isError: false)
 
         } catch {
-            return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            return .init(
+                content: [
+                    .text(
+                        text: "Error: \(error.localizedDescription)", annotations: nil, _meta: nil)
+                ], isError: true)
         }
     }
 }

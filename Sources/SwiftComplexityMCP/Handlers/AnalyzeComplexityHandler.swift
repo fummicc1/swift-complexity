@@ -11,7 +11,9 @@ enum AnalyzeComplexityHandler {
         else {
             return .init(
                 content: [
-                    .text("Error: 'paths' parameter is required and must be a non-empty array")
+                    .text(
+                        text: "Error: 'paths' parameter is required and must be a non-empty array",
+                        annotations: nil, _meta: nil)
                 ],
                 isError: true)
         }
@@ -32,7 +34,10 @@ enum AnalyzeComplexityHandler {
         if cyclomaticOnly && cognitiveOnly {
             return .init(
                 content: [
-                    .text("Error: 'cyclomatic_only' and 'cognitive_only' are mutually exclusive")
+                    .text(
+                        text:
+                            "Error: 'cyclomatic_only' and 'cognitive_only' are mutually exclusive",
+                        annotations: nil, _meta: nil)
                 ],
                 isError: true)
         }
@@ -41,7 +46,9 @@ enum AnalyzeComplexityHandler {
         if lcom4 && indexStorePath == nil {
             return .init(
                 content: [
-                    .text("Error: 'index_store_path' is required when 'lcom4' is true")
+                    .text(
+                        text: "Error: 'index_store_path' is required when 'lcom4' is true",
+                        annotations: nil, _meta: nil)
                 ],
                 isError: true)
         }
@@ -53,7 +60,11 @@ enum AnalyzeComplexityHandler {
                 configuration = try ThresholdConfiguration.load(fromFileAtPath: configPath)
             } catch {
                 return .init(
-                    content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                    content: [
+                        .text(
+                            text: "Error: \(error.localizedDescription)", annotations: nil,
+                            _meta: nil)
+                    ], isError: true)
             }
         } else {
             configuration = .empty
@@ -103,10 +114,15 @@ enum AnalyzeComplexityHandler {
             let formatter = OutputFormatter()
             let output = formatter.format(results: results, format: format, options: outputOptions)
 
-            return .init(content: [.text(output)], isError: false)
+            return .init(
+                content: [.text(text: output, annotations: nil, _meta: nil)], isError: false)
 
         } catch {
-            return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            return .init(
+                content: [
+                    .text(
+                        text: "Error: \(error.localizedDescription)", annotations: nil, _meta: nil)
+                ], isError: true)
         }
     }
 

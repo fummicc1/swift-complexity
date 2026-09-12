@@ -9,7 +9,10 @@ enum ToolRouter {
         case "analyze_code_string":
             return await AnalyzeCodeStringHandler.handle(params.arguments)
         default:
-            return .init(content: [.text("Unknown tool: \(params.name)")], isError: true)
+            return .init(
+                content: [
+                    .text(text: "Unknown tool: \(params.name)", annotations: nil, _meta: nil)
+                ], isError: true)
         }
     }
 }
