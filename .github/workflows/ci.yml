@@ -54,9 +54,9 @@ jobs:
       - name: Cache Swift packages
         uses: actions/cache@v5
         with:
-          path: |
-            .build
-            Package.resolved
+          # Package.resolved is tracked in git and must not be restored from an
+          # older cache entry, or a dependency bump builds against the old pins.
+          path: .build
           key: ${{ runner.os }}-swift-${{ matrix.swift-version }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
           restore-keys: |
             ${{ runner.os }}-swift-${{ matrix.swift-version }}-
