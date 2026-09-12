@@ -17,7 +17,7 @@ A command-line tool to analyze Swift code complexity and quality metrics using s
 - **Multiple Output Formats**: Text, JSON, XML, Xcode diagnostics, and SARIF output for different use cases
 - **Flexible Analysis**: Single files, directories, or recursive directory analysis
 - **Swift Syntax Based**: Uses `swift-syntax` for accurate Swift code parsing
-- **Cross-Platform Support**: CLI works on macOS and Linux, library works on iOS 13+. Index-backed metrics (LCOM4, coupling) live behind the opt-in `IndexStore` SwiftPM trait, so the package itself builds wherever swift-syntax does; release binaries ship with the trait enabled.
+- **Cross-Platform Support**: CLI works on macOS and Linux, library works on iOS 16+. Index-backed metrics (LCOM4, coupling) live behind the opt-in `IndexStore` SwiftPM trait, so the package itself builds wherever swift-syntax does; release binaries ship with the trait enabled.
 - **MCP Server**: Expose complexity analysis as tools for LLM agents (Claude Code, etc.) via Model Context Protocol
 - **Claude Plugin**: Ready-to-use Claude Code plugin with MCP server and analysis skill
 - **Extensible Architecture**: Designed to support additional quality metrics in the future
@@ -214,7 +214,7 @@ Unified package with multiple components:
 
 ### Core Package
 
-- **SwiftComplexityCore**: Core analysis library (supports macOS 14+, iOS 13+). Add `traits: ["IndexStore"]` to your `.package(...)` declaration to include LCOM4 and coupling analysis
+- **SwiftComplexityCore**: Core analysis library (supports macOS 14+, iOS 16+). Add `traits: ["IndexStore"]` to your `.package(...)` declaration to include LCOM4 and coupling analysis
 - **SwiftComplexityCLI**: Command-line interface
 - **SwiftComplexityMCP**: MCP server for LLM agent integration
 - **SwiftComplexityPlugin**: Xcode Build Tool Plugin
@@ -449,7 +449,7 @@ and `lcom4_cohesion`) with `warning` level, escalating to `error` at twice the t
 ### Core Library
 
 - Swift 6.2+
-- macOS 14+, iOS 13+, or Linux
+- macOS 14+, iOS 16+, or Linux
 
 ### Index-Backed Metrics: LCOM4 and Coupling (Optional)
 
