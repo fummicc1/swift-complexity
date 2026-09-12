@@ -7,7 +7,7 @@ let package = Package(
   name: "swift-complexity",
   platforms: [
     .macOS(.v14),
-    .iOS(.v13),
+    .iOS(.v16),
   ],
   products: [
     .library(
