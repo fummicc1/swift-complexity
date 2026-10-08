@@ -4,6 +4,8 @@ import SwiftComplexityCore
 
 /// Handles the `analyze_complexity` tool — analyzes Swift files/directories on disk.
 enum AnalyzeComplexityHandler {
+    // Flat option handling: since #58, every `??` default and ternary counts as a branch.
+    // swift-complexity:disable cyclomatic
     static func handle(_ arguments: [String: Value]?) async -> CallTool.Result {
         // Extract required parameter
         guard let paths = ParamExtractor.stringArray("paths", from: arguments),

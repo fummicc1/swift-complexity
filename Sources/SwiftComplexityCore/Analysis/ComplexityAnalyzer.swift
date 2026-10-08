@@ -1,4 +1,5 @@
 import Foundation
+import SwiftOperators
 import SwiftSyntax
 
 public protocol ComplexityAnalyzing {
@@ -62,7 +63,7 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
         -> ComplexityResult
     {
         // Existing function complexity calculation
-        let functions = functionDetector.detectFunctions(in: sourceFile)
+        let functions = functionDetector.detectFunctions(in: Self.foldingOperators(in: sourceFile))
         var functionComplexities: [FunctionComplexity] = []
 
         for function in functions {
@@ -134,6 +135,18 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
     }
 
     // MARK: - Private Helpers
+
+    /// SwiftParser leaves every operator expression unfolded: `a ? b : c` and
+    /// `a ?? b` stay a flat `SequenceExprSyntax`, so `TernaryExprSyntax` and
+    /// `InfixOperatorExprSyntax` only appear once the tree is folded with the
+    /// standard operator precedence. Folding keeps every token in place, so
+    /// source locations are unaffected. Operators the standard table doesn't
+    /// know (custom operators) are folded best-effort instead of failing the
+    /// whole file.
+    static func foldingOperators(in sourceFile: SourceFileSyntax) -> SourceFileSyntax {
+        let folded = OperatorTable.standardOperators.foldAll(sourceFile) { _ in }
+        return folded.as(SourceFileSyntax.self) ?? sourceFile
+    }
 
     /// Count members (methods and properties)
     private func extractMemberCounts(from members: MemberBlockItemListSyntax) -> (
