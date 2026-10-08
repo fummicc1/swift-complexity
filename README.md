@@ -236,7 +236,7 @@ swift run SwiftComplexityCLI Sources --verbose --recursive
 # Exclude test files with pattern matching
 swift run SwiftComplexityCLI Sources --recursive --exclude "*Test*.swift"
 
-# Show only cognitive complexity above threshold
+# Report and gate on cognitive complexity only (cyclomatic never counts against the threshold)
 swift run SwiftComplexityCLI Sources --cognitive-only --threshold 5
 
 # Analyze class cohesion with LCOM4

@@ -162,19 +162,23 @@ public struct ThresholdConfiguration: Codable, Sendable, Equatable {
 
     /// Whether the given function exceeds its effective threshold.
     ///
-    /// Mirrors the legacy semantics: a function is flagged when either its
-    /// cyclomatic or cognitive complexity reaches the threshold. A metric
-    /// suppressed via `// swift-complexity:disable` is excluded from this
-    /// check; its value is still reported elsewhere, only the judgment is
-    /// skipped.
-    public func isExceeded(_ function: FunctionComplexity, fallback: Int?) -> Bool {
+    /// A function is flagged when any metric in `metrics` reaches the
+    /// threshold. By default both cyclomatic and cognitive complexity take
+    /// part; `--cyclomatic-only` / `--cognitive-only` narrow the set so the
+    /// other metric cannot fail the run. A metric suppressed via
+    /// `// swift-complexity:disable` is excluded from this check; its value
+    /// is still reported elsewhere, only the judgment is skipped.
+    public func isExceeded(
+        _ function: FunctionComplexity,
+        fallback: Int?,
+        metrics: Set<SuppressedMetric> = SuppressedMetric.functionLevel
+    ) -> Bool {
         guard
             let threshold = threshold(forTypeName: function.enclosingTypeName, fallback: fallback)
         else {
             return false
         }
-        return (!function.isSuppressed(.cyclomatic) && function.cyclomaticComplexity >= threshold)
-            || (!function.isSuppressed(.cognitive) && function.cognitiveComplexity >= threshold)
+        return !function.exceedingMetrics(threshold: threshold, among: metrics).isEmpty
     }
 
     // MARK: - Loading

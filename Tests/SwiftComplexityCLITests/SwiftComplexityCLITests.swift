@@ -342,3 +342,61 @@ struct CLIConfigExecutionTests {
         }
     }
 }
+
+// MARK: - Metric Selection Execution Tests
+
+@Suite("CLI Metric Selection", .tags(.cli, .integration))
+struct CLIMetricSelectionTests {
+
+    /// A `switch` with eight cases: cyclomatic 9, cognitive 1 (issue #53).
+    private let source = """
+        enum Kind { case a, b, c, d, e, f, g, h }
+
+        func label(_ kind: Kind) -> String {
+            switch kind {
+            case .a: return "a"
+            case .b: return "b"
+            case .c: return "c"
+            case .d: return "d"
+            case .e: return "e"
+            case .f: return "f"
+            case .g: return "g"
+            case .h: return "h"
+            }
+        }
+        """
+
+    private func withSource(_ body: (_ sourcePath: String) async throws -> Void) async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swift-complexity-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceURL = directory.appendingPathComponent("Fixture.swift")
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+
+        try await body(sourceURL.path)
+    }
+
+    @Test("--cognitive-only keeps a cyclomatic-only violation from failing the run")
+    func cognitiveOnlyGatesCognitiveAlone() async throws {
+        try await withSource { sourcePath in
+            let command = try ComplexityCommand.parse([
+                sourcePath, "--cognitive-only", "--threshold", "9",
+            ])
+            try await command.run()
+        }
+    }
+
+    @Test("--cyclomatic-only still fails on the same function")
+    func cyclomaticOnlyGatesCyclomaticAlone() async throws {
+        try await withSource { sourcePath in
+            let command = try ComplexityCommand.parse([
+                sourcePath, "--cyclomatic-only", "--threshold", "9",
+            ])
+            await #expect(throws: ExitCode.self) {
+                try await command.run()
+            }
+        }
+    }
+}

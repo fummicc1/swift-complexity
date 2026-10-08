@@ -23,6 +23,7 @@ enum HotspotRanker {
         results: [ComplexityResult],
         configuration: ThresholdConfiguration,
         fallbackThreshold: Int?,
+        metrics: Set<SuppressedMetric> = SuppressedMetric.functionLevel,
         limit: Int = 10
     ) -> [Hotspot] {
         var fanInCandidates: [String: [(file: String, fanIn: Int)]] = [:]
@@ -52,7 +53,9 @@ enum HotspotRanker {
         var hotspots: [Hotspot] = []
         for result in results {
             for function in result.functions
-            where configuration.isExceeded(function, fallback: fallbackThreshold) {
+            where configuration.isExceeded(
+                function, fallback: fallbackThreshold, metrics: metrics)
+            {
                 hotspots.append(
                     Hotspot(
                         function: function,
