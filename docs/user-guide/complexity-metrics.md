@@ -17,26 +17,30 @@ The cyclomatic complexity is calculated as the number of decision points plus 1:
 The following Swift language constructs contribute to cyclomatic complexity:
 
 #### Conditional Statements
-- `if` statements: +1 for each `if`
-- `guard` statements: +1 for each `guard`
-- `else if` clauses: +1 for each `else if`
+- `if` statements: +1 for each condition (`if let a, b` has two conditions: +2)
+- `guard` statements: +1 for each condition
+- `else if` clauses: +1 for each condition
 - Ternary operators (`? :`): +1
 
 #### Loop Statements
-- `while` loops: +1
-- `for` loops: +1
+- `while` loops: +1 for each condition
+- `for` loops: +1, plus +1 for a `where` clause
 - `repeat-while` loops: +1
 
 #### Switch Statements
-- `switch` statements: +1 for the switch itself
-- Each `case` clause: +1 (including `default`)
+- Each `case` label: +1 (a label with several patterns, such as `case 1, 2:`, counts once)
+- The `switch` itself and `default`: not counted
 
 #### Logical Operators
 - `&&` (logical AND): +1 for each occurrence
 - `||` (logical OR): +1 for each occurrence
+- `??` (nil-coalescing): +1 for each occurrence
 
 #### Exception Handling
 - `catch` blocks: +1 for each `catch`
+
+#### Conditional Compilation
+- `#if` / `#elseif` / `#else`: only one clause is compiled, so only the most complex clause counts
 
 ### Example
 
@@ -76,20 +80,23 @@ Cognitive complexity is calculated by assigning points for:
 
 #### Basic Control Structures (+1 each)
 - `if`, `else if`, `else`
-- `switch`, `case`
+- `switch` (once for the whole statement; `case` labels add nothing)
 - `for`, `while`, `repeat-while`
 - `guard`
 - `catch`
-- `break`, `continue` (when jumping to a label)
+- Ternary operators (`? :`)
 
 #### Nesting Increment
 For each level of nesting inside the following structures:
 - `if`, `else if`, `else`
-- `switch`, `case`
+- `switch`
 - `for`, `while`, `repeat-while`
 - `catch`
 
-The nesting increment is added to the base score of nested control structures.
+The nesting increment is added to the base score of nested `if`, `switch`, loop, `catch` and ternary structures. `else if` and `else` never receive it, and `guard` adds +1 without a nesting increment.
+
+#### Conditional Compilation
+- `#if` / `#elseif` / `#else`: only the most complex clause counts; the directive adds no nesting
 
 #### Logical Operator Sequences
 - First `&&` or `||` in a sequence: +0
@@ -157,14 +164,18 @@ func validateUser(name: String, age: Int, email: String) -> Bool {
 
 ### Swift-Specific Considerations
 
-#### Optional Chaining
+#### Optional Chaining and Nil-Coalescing
 Optional chaining (`?.`) is not counted as it doesn't add control flow complexity.
+
+Nil-coalescing (`a ?? b`) is a branch, so it adds +1 to cyclomatic complexity. Following SonarSource's specification, it adds nothing to cognitive complexity.
 
 #### Pattern Matching
 Complex pattern matching in `switch` statements may have higher cognitive complexity due to nesting.
 
-#### Closures
-Closures are analyzed as separate units when they contain control flow.
+#### Closures and Nested Declarations
+Closures count toward the function that contains them.
+
+Nested functions, methods of local types, and local computed properties are reported as functions of their own, so their bodies are not added to the enclosing function.
 
 #### Error Handling
 - `try?` and `try!`: Not counted

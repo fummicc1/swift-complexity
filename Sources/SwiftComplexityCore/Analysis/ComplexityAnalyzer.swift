@@ -1,4 +1,5 @@
 import Foundation
+import SwiftOperators
 import SwiftSyntax
 
 public protocol ComplexityAnalyzing {
@@ -62,7 +63,7 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
         -> ComplexityResult
     {
         // Existing function complexity calculation
-        let functions = functionDetector.detectFunctions(in: sourceFile)
+        let functions = functionDetector.detectFunctions(in: Self.foldingOperators(in: sourceFile))
         var functionComplexities: [FunctionComplexity] = []
 
         for function in functions {
@@ -134,6 +135,11 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
     }
 
     // MARK: - Private Helpers
+
+    static func foldingOperators(in sourceFile: SourceFileSyntax) -> SourceFileSyntax {
+        let folded = OperatorTable.standardOperators.foldAll(sourceFile) { _ in }
+        return folded.as(SourceFileSyntax.self) ?? sourceFile
+    }
 
     /// Count members (methods and properties)
     private func extractMemberCounts(from members: MemberBlockItemListSyntax) -> (
