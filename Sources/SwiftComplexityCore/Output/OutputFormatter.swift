@@ -324,7 +324,11 @@ public class OutputFormatter {
             xml += "enclosing-type=\"\(xmlEscape(enclosingTypeName))\" "
         }
         xml += "line=\"\(function.location.line)\" "
-        xml += "column=\"\(function.location.column)\">\n"
+        xml += "column=\"\(function.location.column)\""
+        if let endLocation = function.endLocation {
+            xml += " end-line=\"\(endLocation.line)\" end-column=\"\(endLocation.column)\""
+        }
+        xml += ">\n"
         xml +=
             "      <cyclomatic-complexity>\(function.cyclomaticComplexity)</cyclomatic-complexity>\n"
         xml +=

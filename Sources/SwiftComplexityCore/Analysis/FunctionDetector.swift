@@ -6,6 +6,8 @@ struct DetectedFunction {
     let signature: String
     let body: CodeBlockSyntax?
     let location: SourceLocation
+    /// End of the declaration (its closing brace).
+    let endLocation: SourceLocation?
     /// Nearest enclosing nominal type name (or extended type for extensions); nil for free functions.
     let enclosingTypeName: String?
     /// Metrics suppressed via a `// swift-complexity:disable` comment directly
@@ -17,6 +19,7 @@ struct DetectedFunction {
         signature: String,
         body: CodeBlockSyntax?,
         location: SourceLocation,
+        endLocation: SourceLocation? = nil,
         enclosingTypeName: String? = nil,
         suppressedMetrics: Set<SuppressedMetric> = []
     ) {
@@ -24,6 +27,7 @@ struct DetectedFunction {
         self.signature = signature
         self.body = body
         self.location = location
+        self.endLocation = endLocation
         self.enclosingTypeName = enclosingTypeName
         self.suppressedMetrics = suppressedMetrics
     }
@@ -54,6 +58,7 @@ class FunctionDetector: SyntaxVisitor {
             signature: signature,
             body: node.body,
             location: location,
+            endLocation: extractEndLocation(from: node),
             enclosingTypeName: enclosingTypeName(of: node),
             suppressedMetrics: SuppressionParser.suppressedMetrics(
                 in: node.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
@@ -74,6 +79,7 @@ class FunctionDetector: SyntaxVisitor {
             signature: signature,
             body: node.body,
             location: location,
+            endLocation: extractEndLocation(from: node),
             enclosingTypeName: enclosingTypeName(of: node),
             suppressedMetrics: SuppressionParser.suppressedMetrics(
                 in: node.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
@@ -94,6 +100,7 @@ class FunctionDetector: SyntaxVisitor {
             signature: signature,
             body: node.body,
             location: location,
+            endLocation: extractEndLocation(from: node),
             enclosingTypeName: enclosingTypeName(of: node),
             suppressedMetrics: SuppressionParser.suppressedMetrics(
                 in: node.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
@@ -132,7 +139,12 @@ class FunctionDetector: SyntaxVisitor {
         let name = propertyName.map { "\($0).\(accessorKind)" } ?? accessorKind
 
         // Build better signature
-        let signature = propertyName.map { "var \($0) { \(accessorKind) }" } ?? accessorKind
+        let signature: String
+        if let subscriptDecl = findParentSubscript(from: node) {
+            signature = "\(subscriptSignature(of: subscriptDecl)) { \(accessorKind) }"
+        } else {
+            signature = propertyName.map { "var \($0) { \(accessorKind) }" } ?? accessorKind
+        }
         let location = extractLocation(from: node.accessorSpecifier)
 
         let detectedFunction = DetectedFunction(
@@ -140,6 +152,38 @@ class FunctionDetector: SyntaxVisitor {
             signature: signature,
             body: node.body,
             location: location,
+            endLocation: extractEndLocation(from: node),
+            enclosingTypeName: enclosingTypeName(of: node),
+            suppressedMetrics: SuppressionParser.suppressedMetrics(
+                in: node.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
+        )
+
+        detectedFunctions.append(detectedFunction)
+
+        return .visitChildren
+    }
+
+    // Subscripts with a shorthand getter (`subscript(i: Int) -> T { ... }`).
+    // Explicit get/set accessors are handled by visit(AccessorDeclSyntax).
+    public override func visit(_ node: SubscriptDeclSyntax) -> SyntaxVisitorContinueKind {
+        guard let accessorBlock = node.accessorBlock,
+            case .getter(let statements) = accessorBlock.accessors
+        else {
+            return .visitChildren
+        }
+
+        let codeBlock = CodeBlockSyntax(
+            leftBrace: .leftBraceToken(),
+            statements: statements,
+            rightBrace: .rightBraceToken()
+        )
+
+        let detectedFunction = DetectedFunction(
+            name: "subscript",
+            signature: subscriptSignature(of: node),
+            body: codeBlock,
+            location: extractLocation(from: node.subscriptKeyword),
+            endLocation: extractEndLocation(from: node),
             enclosingTypeName: enclosingTypeName(of: node),
             suppressedMetrics: SuppressionParser.suppressedMetrics(
                 in: node.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
@@ -191,6 +235,29 @@ class FunctionDetector: SyntaxVisitor {
         return SourceLocation(line: sourceLocation.line, column: sourceLocation.column)
     }
 
+    private func subscriptSignature(of node: SubscriptDeclSyntax) -> String {
+        var signature = "subscript"
+
+        if let genericParameterClause = node.genericParameterClause {
+            signature += genericParameterClause.trimmedDescription
+        }
+
+        signature += node.parameterClause.trimmedDescription
+        signature += " " + node.returnClause.trimmedDescription
+
+        return signature
+    }
+
+    /// Position just past the declaration's last token (its closing brace).
+    private func extractEndLocation(from node: some SyntaxProtocol) -> SourceLocation {
+        guard let converter = converter else {
+            return SourceLocation(line: 0, column: 0)
+        }
+
+        let sourceLocation = converter.location(for: node.endPositionBeforeTrailingTrivia)
+        return SourceLocation(line: sourceLocation.line, column: sourceLocation.column)
+    }
+
     private func extractPropertyName(from binding: PatternBindingSyntax) -> String? {
         if let identifier = binding.pattern.as(IdentifierPatternSyntax.self) {
             return identifier.identifier.text
@@ -233,6 +300,7 @@ class FunctionDetector: SyntaxVisitor {
             signature: signature,
             body: codeBlock,
             location: location,
+            endLocation: extractEndLocation(from: binding),
             enclosingTypeName: enclosingTypeName(of: variable),
             suppressedMetrics: SuppressionParser.suppressedMetrics(
                 in: variable.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
@@ -272,10 +340,28 @@ class FunctionDetector: SyntaxVisitor {
     private func findParentPropertyName(from node: AccessorDeclSyntax) -> String? {
         var current: Syntax? = Syntax(node)
         while let parent = current?.parent {
+            // Accessors of a subscript are named "subscript.get" / "subscript.set".
+            if parent.is(SubscriptDeclSyntax.self) {
+                return "subscript"
+            }
             if let binding = parent.as(PatternBindingSyntax.self),
                 let identifier = binding.pattern.as(IdentifierPatternSyntax.self)
             {
                 return identifier.identifier.text
+            }
+            current = parent
+        }
+        return nil
+    }
+
+    private func findParentSubscript(from node: AccessorDeclSyntax) -> SubscriptDeclSyntax? {
+        var current: Syntax? = Syntax(node)
+        while let parent = current?.parent {
+            if parent.is(PatternBindingSyntax.self) {
+                return nil
+            }
+            if let subscriptDecl = parent.as(SubscriptDeclSyntax.self) {
+                return subscriptDecl
             }
             current = parent
         }
