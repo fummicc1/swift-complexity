@@ -159,8 +159,9 @@ extension OutputFormatter {
     /// Builds one SARIF result per metric that reaches its effective threshold,
     /// using the same `>=` semantics as the CLI exit-code check so annotations
     /// and CI failures always agree. A metric suppressed via
-    /// `// swift-complexity:disable` never produces a result, even if the
-    /// overall function still exceeds the threshold on its other metric.
+    /// `// swift-complexity:disable`, or deselected by `--cyclomatic-only` /
+    /// `--cognitive-only`, never produces a result, even if the overall
+    /// function still exceeds the threshold on its other metric.
     private func complexityResults(
         for result: ComplexityResult,
         options: OutputOptions
@@ -185,10 +186,10 @@ extension OutputFormatter {
                 ),
             ]
 
+            let exceeding = function.exceedingMetrics(
+                threshold: threshold, among: options.gatedMetrics)
             return metrics.compactMap { metric in
-                guard !function.isSuppressed(metric.metric), metric.value >= threshold else {
-                    return nil
-                }
+                guard exceeding.contains(metric.metric) else { return nil }
                 let message =
                     "Function '\(function.name)' has \(metric.label) complexity \(metric.value) (threshold: \(threshold))"
                 return SARIFResult(

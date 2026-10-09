@@ -22,6 +22,16 @@ public struct OutputOptions {
         self.threshold = threshold
         self.thresholdConfiguration = thresholdConfiguration
     }
+
+    /// Function-level metrics that take part in threshold judgments (result
+    /// filtering, exit code, Xcode diagnostics, SARIF results).
+    /// `showCyclomaticOnly` / `showCognitiveOnly` narrow it to one metric so
+    /// the other metric can neither fail nor annotate a run.
+    public var gatedMetrics: Set<SuppressedMetric> {
+        if showCyclomaticOnly { return [.cyclomatic] }
+        if showCognitiveOnly { return [.cognitive] }
+        return SuppressedMetric.functionLevel
+    }
 }
 
 public class OutputFormatter {
@@ -148,7 +158,8 @@ public class OutputFormatter {
         let hotspots = HotspotRanker.rank(
             results: results,
             configuration: options.thresholdConfiguration ?? .empty,
-            fallbackThreshold: options.threshold)
+            fallbackThreshold: options.threshold,
+            metrics: options.gatedMetrics)
         guard !hotspots.isEmpty else { return nil }
 
         var output = "Hotspots (complexity violations x fan-in):\n"
@@ -399,7 +410,8 @@ public class OutputFormatter {
                     ?? options.threshold
                 let threshold = resolved ?? 10
                 return createComplexityDiagnostic(
-                    for: function, in: result.filePath, threshold: threshold)
+                    for: function, in: result.filePath, threshold: threshold,
+                    metrics: options.gatedMetrics)
             }
         }
 
@@ -415,29 +427,25 @@ public class OutputFormatter {
 
     /// Creates a complexity diagnostic message
     ///
-    /// A metric suppressed via `// swift-complexity:disable` is excluded from
+    /// A metric suppressed via `// swift-complexity:disable`, or left out of
+    /// `metrics` by `--cyclomatic-only` / `--cognitive-only`, is excluded from
     /// the exceedance and severity checks below, but both raw values are
-    /// always shown in the message — suppression only skips the judgment, it
-    /// never hides the underlying numbers.
+    /// always shown in the message — the judgment is skipped, the underlying
+    /// numbers are never hidden.
     private func createComplexityDiagnostic(
         for function: FunctionComplexity,
         in filePath: String,
-        threshold: Int
+        threshold: Int,
+        metrics: Set<SuppressedMetric>
     ) -> String? {
-        let cyclomatic = function.cyclomaticComplexity
-        let cognitive = function.cognitiveComplexity
-
-        let cyclomaticExceeds = !function.isSuppressed(.cyclomatic) && cyclomatic >= threshold
-        let cognitiveExceeds = !function.isSuppressed(.cognitive) && cognitive >= threshold
-
-        guard cyclomaticExceeds || cognitiveExceeds else { return nil }
+        let exceeding = function.exceedingMetrics(threshold: threshold, among: metrics)
+        guard !exceeding.isEmpty else { return nil }
 
         let severity =
-            (cyclomaticExceeds && cyclomatic > threshold * 2)
-                || (cognitiveExceeds && cognitive > threshold * 2)
+            exceeding.contains { (function.complexity(for: $0) ?? 0) > threshold * 2 }
             ? "error" : "warning"
         let message =
-            "Function '\(function.name)' has high complexity (Cyclomatic: \(cyclomatic), Cognitive: \(cognitive), Threshold: \(threshold))"
+            "Function '\(function.name)' has high complexity (Cyclomatic: \(function.cyclomaticComplexity), Cognitive: \(function.cognitiveComplexity), Threshold: \(threshold))"
 
         return
             "\(filePath):\(function.location.line):\(function.location.column): \(severity): \(message)"

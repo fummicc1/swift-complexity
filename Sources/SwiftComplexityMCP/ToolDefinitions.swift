@@ -52,12 +52,12 @@ enum ToolDefinitions {
                 "cyclomatic_only": .object([
                     "type": .string("boolean"),
                     "default": .bool(false),
-                    "description": .string("Show only cyclomatic complexity"),
+                    "description": .string("Report and gate on cyclomatic complexity only"),
                 ]),
                 "cognitive_only": .object([
                     "type": .string("boolean"),
                     "default": .bool(false),
-                    "description": .string("Show only cognitive complexity"),
+                    "description": .string("Report and gate on cognitive complexity only"),
                 ]),
                 "lcom4": .object([
                     "type": .string("boolean"),

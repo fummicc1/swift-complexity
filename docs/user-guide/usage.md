@@ -35,8 +35,8 @@ swift run SwiftComplexity path/to/directory --recursive
 
 - `--threshold <number>` - Set complexity threshold for warnings
 - `--config <path>` - Path to a per-type threshold config file (YAML). Defaults to `.swift-complexity.yml` in the current directory if present
-- `--cyclomatic-only` - Show only cyclomatic complexity metrics
-- `--cognitive-only` - Show only cognitive complexity metrics
+- `--cyclomatic-only` - Report and gate on cyclomatic complexity only. The other metric is left out of the table and never counted against the threshold
+- `--cognitive-only` - Report and gate on cognitive complexity only. The other metric is left out of the table and never counted against the threshold
 - `--recursive` - Recursively analyze subdirectories
 - `--report-suppressions` - Print every function with a `// swift-complexity:disable` comment, and its current metric values, to stderr
 
@@ -87,6 +87,10 @@ swift run swift-complexity Sources --cyclomatic-only
 
 # Only cognitive complexity
 swift run swift-complexity Sources --cognitive-only
+
+# Fail (exit code 1) only when cognitive complexity reaches 10; cyclomatic
+# complexity is ignored by the threshold, the Xcode diagnostics and SARIF
+swift run swift-complexity Sources --cognitive-only --threshold 10
 ```
 
 ## Per-Type Complexity Thresholds

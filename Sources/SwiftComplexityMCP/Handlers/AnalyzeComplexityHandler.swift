@@ -97,13 +97,6 @@ enum AnalyzeComplexityHandler {
             var results = try await fileProcessor.processFiles(
                 at: paths, options: processingOptions)
 
-            // Apply threshold filtering (per-type config and/or global threshold)
-            if threshold != nil || !configuration.isEmpty {
-                results = filterByThreshold(
-                    results: results, threshold: threshold, configuration: configuration)
-            }
-
-            // Format output
             let outputOptions = OutputOptions(
                 showCyclomaticOnly: cyclomaticOnly,
                 showCognitiveOnly: cognitiveOnly,
@@ -111,6 +104,13 @@ enum AnalyzeComplexityHandler {
                 threshold: threshold,
                 thresholdConfiguration: configuration
             )
+
+            // Apply threshold filtering (per-type config and/or global threshold)
+            if threshold != nil || !configuration.isEmpty {
+                results = filterByThreshold(
+                    results: results, threshold: threshold, configuration: configuration,
+                    metrics: outputOptions.gatedMetrics)
+            }
 
             let formatter = OutputFormatter()
             let output = formatter.format(results: results, format: format, options: outputOptions)
@@ -130,11 +130,12 @@ enum AnalyzeComplexityHandler {
     private static func filterByThreshold(
         results: [ComplexityResult],
         threshold: Int?,
-        configuration: ThresholdConfiguration
+        configuration: ThresholdConfiguration,
+        metrics: Set<SuppressedMetric>
     ) -> [ComplexityResult] {
         results.compactMap { result in
             let filteredFunctions = result.functions.filter { function in
-                configuration.isExceeded(function, fallback: threshold)
+                configuration.isExceeded(function, fallback: threshold, metrics: metrics)
             }
 
             // Threshold only filters functions; cohesion data is always preserved

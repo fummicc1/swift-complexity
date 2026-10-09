@@ -79,6 +79,31 @@ public struct FunctionComplexity: Codable, Hashable, Sendable {
     }
 }
 
+extension FunctionComplexity {
+    /// The measured value of a function-level metric; `nil` for type-level metrics.
+    func complexity(for metric: SuppressedMetric) -> Int? {
+        switch metric {
+        case .cyclomatic: return cyclomaticComplexity
+        case .cognitive: return cognitiveComplexity
+        case .lcom4, .coupling: return nil
+        }
+    }
+
+    /// The subset of `metrics` that is not suppressed and reaches `threshold`.
+    ///
+    /// Every threshold judgment (exit code, result filtering, Xcode
+    /// diagnostics, SARIF results) goes through here so they cannot drift
+    /// apart.
+    func exceedingMetrics(
+        threshold: Int, among metrics: Set<SuppressedMetric>
+    ) -> Set<SuppressedMetric> {
+        metrics.filter { metric in
+            guard let value = complexity(for: metric), !isSuppressed(metric) else { return false }
+            return value >= threshold
+        }
+    }
+}
+
 extension FunctionComplexity: CustomStringConvertible {
     public var description: String {
         "\(name) - Cyclomatic: \(cyclomaticComplexity), Cognitive: \(cognitiveComplexity) at \(location)"

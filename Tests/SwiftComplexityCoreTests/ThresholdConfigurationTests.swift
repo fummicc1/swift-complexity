@@ -172,6 +172,32 @@ struct ThresholdConfigurationTests {
                 type: nil, cyclomatic: 20, cognitive: 1, suppressed: [.cyclomatic])
             #expect(!config.isExceeded(fn, fallback: 5))
         }
+
+        @Test("Narrowing to cognitive ignores a cyclomatic value at the threshold")
+        func cognitiveOnlyIgnoresCyclomatic() {
+            // Issue #53: cyclomatic 9 / cognitive 1 must not fail a cognitive-only run
+            let config = ThresholdConfiguration.empty
+            let fn = function(type: nil, cyclomatic: 9, cognitive: 1)
+            #expect(config.isExceeded(fn, fallback: 9))
+            #expect(!config.isExceeded(fn, fallback: 9, metrics: [.cognitive]))
+            #expect(config.isExceeded(fn, fallback: 9, metrics: [.cyclomatic]))
+        }
+
+        @Test("Narrowing to cyclomatic ignores a cognitive value at the threshold")
+        func cyclomaticOnlyIgnoresCognitive() {
+            let config = ThresholdConfiguration.empty
+            let fn = function(type: nil, cyclomatic: 1, cognitive: 9)
+            #expect(!config.isExceeded(fn, fallback: 9, metrics: [.cyclomatic]))
+            #expect(config.isExceeded(fn, fallback: 9, metrics: [.cognitive]))
+        }
+
+        @Test("Suppression still applies inside a narrowed metric set")
+        func suppressionAppliesWithinNarrowedSet() {
+            let config = ThresholdConfiguration.empty
+            let fn = function(
+                type: nil, cyclomatic: 20, cognitive: 20, suppressed: [.cognitive])
+            #expect(!config.isExceeded(fn, fallback: 5, metrics: [.cognitive]))
+        }
     }
 
     // MARK: - YAML Loading

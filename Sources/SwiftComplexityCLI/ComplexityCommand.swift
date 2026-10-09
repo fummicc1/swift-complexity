@@ -70,13 +70,13 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
     @Flag(
         name: .long,
-        help: "Show only cyclomatic complexity"
+        help: "Report and gate on cyclomatic complexity only"
     )
     public var cyclomaticOnly: Bool = false
 
     @Flag(
         name: .long,
-        help: "Show only cognitive complexity"
+        help: "Report and gate on cognitive complexity only"
     )
     public var cognitiveOnly: Bool = false
 
@@ -183,9 +183,6 @@ public struct ComplexityCommand: AsyncParsableCommand {
                 printSuppressionsReport(results: results)
             }
 
-            let filteredResults = filterByThreshold(
-                results: results, threshold: threshold, configuration: configuration)
-
             let outputOptions = OutputOptions(
                 showCyclomaticOnly: cyclomaticOnly,
                 showCognitiveOnly: cognitiveOnly,
@@ -193,6 +190,10 @@ public struct ComplexityCommand: AsyncParsableCommand {
                 threshold: threshold,
                 thresholdConfiguration: configuration
             )
+
+            let filteredResults = filterByThreshold(
+                results: results, threshold: threshold, configuration: configuration,
+                metrics: outputOptions.gatedMetrics)
 
             let formatter = OutputFormatter()
             let output = formatter.format(
@@ -202,7 +203,8 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
             if threshold != nil || !configuration.isEmpty || configuration.coupling != nil,
                 hasExceededThreshold(
-                    results: results, threshold: threshold, configuration: configuration)
+                    results: results, threshold: threshold, configuration: configuration,
+                    metrics: outputOptions.gatedMetrics)
             {
                 throw ExitCode(1)
             }
@@ -367,14 +369,15 @@ public struct ComplexityCommand: AsyncParsableCommand {
     private func filterByThreshold(
         results: [ComplexityResult],
         threshold: Int?,
-        configuration: ThresholdConfiguration
+        configuration: ThresholdConfiguration,
+        metrics: Set<SuppressedMetric>
     ) -> [ComplexityResult] {
         // No filtering when neither a global threshold nor any config rule is set.
         guard threshold != nil || !configuration.isEmpty else { return results }
 
         return results.compactMap { result in
             let filteredFunctions = result.functions.filter { function in
-                configuration.isExceeded(function, fallback: threshold)
+                configuration.isExceeded(function, fallback: threshold, metrics: metrics)
             }
 
             // For LCOM4, filter classes with low cohesion (LCOM4 >= 3),
@@ -406,11 +409,12 @@ public struct ComplexityCommand: AsyncParsableCommand {
     private func hasExceededThreshold(
         results: [ComplexityResult],
         threshold: Int?,
-        configuration: ThresholdConfiguration
+        configuration: ThresholdConfiguration,
+        metrics: Set<SuppressedMetric>
     ) -> Bool {
         for result in results {
             for function in result.functions {
-                if configuration.isExceeded(function, fallback: threshold) {
+                if configuration.isExceeded(function, fallback: threshold, metrics: metrics) {
                     return true
                 }
             }
