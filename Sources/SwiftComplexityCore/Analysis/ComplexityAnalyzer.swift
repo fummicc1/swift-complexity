@@ -136,13 +136,6 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
 
     // MARK: - Private Helpers
 
-    /// SwiftParser leaves every operator expression unfolded: `a ? b : c` and
-    /// `a ?? b` stay a flat `SequenceExprSyntax`, so `TernaryExprSyntax` and
-    /// `InfixOperatorExprSyntax` only appear once the tree is folded with the
-    /// standard operator precedence. Folding keeps every token in place, so
-    /// source locations are unaffected. Operators the standard table doesn't
-    /// know (custom operators) are folded best-effort instead of failing the
-    /// whole file.
     static func foldingOperators(in sourceFile: SourceFileSyntax) -> SourceFileSyntax {
         let folded = OperatorTable.standardOperators.foldAll(sourceFile) { _ in }
         return folded.as(SourceFileSyntax.self) ?? sourceFile

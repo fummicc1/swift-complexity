@@ -1,8 +1,6 @@
 import Foundation
 import SwiftSyntax
 
-/// Counts decision points in a function body (McCabe).
-///
 /// Expects an operator-folded tree (see `ComplexityAnalyzer.foldingOperators(in:)`):
 /// ternaries and `??` are only visible as `TernaryExprSyntax` /
 /// `InfixOperatorExprSyntax` after folding.
@@ -17,25 +15,21 @@ class CyclomaticComplexityCalculator: FunctionBodyVisitor {
         return complexity
     }
 
-    // If statements: +1 per comma-separated condition (`if let a, b` is two decisions)
     public override func visit(_ node: IfExprSyntax) -> SyntaxVisitorContinueKind {
         complexity += node.conditions.count
         return .visitChildren
     }
 
-    // Guard statements: +1 per comma-separated condition
     public override func visit(_ node: GuardStmtSyntax) -> SyntaxVisitorContinueKind {
         complexity += node.conditions.count
         return .visitChildren
     }
 
-    // While loops: +1 per comma-separated condition
     public override func visit(_ node: WhileStmtSyntax) -> SyntaxVisitorContinueKind {
         complexity += node.conditions.count
         return .visitChildren
     }
 
-    // For loops: +1, and +1 more for a `where` filter
     public override func visit(_ node: ForStmtSyntax) -> SyntaxVisitorContinueKind {
         complexity += node.whereClause == nil ? 1 : 2
         return .visitChildren
@@ -67,8 +61,6 @@ class CyclomaticComplexityCalculator: FunctionBodyVisitor {
         return .visitChildren
     }
 
-    // `#if` / `#elseif` / `#else`: only one clause is compiled, so count the
-    // most complex clause instead of the sum of all of them.
     public override func visit(_ node: IfConfigDeclSyntax) -> SyntaxVisitorContinueKind {
         let clauseComplexities = node.clauses.map { clause in
             clause.elements.map { decisions(in: $0) } ?? 0
@@ -97,7 +89,6 @@ class CyclomaticComplexityCalculator: FunctionBodyVisitor {
         return .visitChildren
     }
 
-    /// Decision points inside `node` alone, without touching the running total.
     private func decisions(in node: some SyntaxProtocol) -> Int {
         let saved = complexity
         complexity = 0

@@ -170,9 +170,6 @@ class CognitiveComplexityCalculator: FunctionBodyVisitor {
         return .skipChildren
     }
 
-    // `#if` / `#elseif` / `#else`: only one clause is compiled, so count the
-    // most complex clause instead of the sum of all of them. Conditional
-    // compilation itself adds no nesting.
     public override func visit(_ node: IfConfigDeclSyntax) -> SyntaxVisitorContinueKind {
         let saved = (complexity, logicalSequenceActive, isInElseBody)
         var maxClauseComplexity = 0

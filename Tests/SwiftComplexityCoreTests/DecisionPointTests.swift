@@ -4,7 +4,6 @@ import Testing
 
 @testable import SwiftComplexityCore
 
-/// Analyzes `source` and returns the reported functions keyed by name.
 private func analyze(_ source: String) async throws -> [String: FunctionComplexity] {
     let analyzer = try ComplexityAnalyzer()
     let result = try await analyzer.analyze(

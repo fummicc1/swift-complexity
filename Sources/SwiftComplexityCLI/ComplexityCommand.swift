@@ -136,7 +136,6 @@ public struct ComplexityCommand: AsyncParsableCommand {
 
     public init() {}
 
-    // Flat option handling: since #58, every `??` default and ternary counts as a branch.
     // swift-complexity:disable cyclomatic
     public func run() async throws {
         try validateFlags()
@@ -320,7 +319,6 @@ public struct ComplexityCommand: AsyncParsableCommand {
     /// Prints every suppressed function and type with its current metric
     /// values to stderr, so `// swift-complexity:disable` comments stay
     /// visible instead of silently hiding violations.
-    // Flat option handling: since #58, every `??` default and ternary counts as a branch.
     // swift-complexity:disable cyclomatic
     private func printSuppressionsReport(results: [ComplexityResult]) {
         var lines: [String] = []
