@@ -49,6 +49,8 @@ let package = Package(
       dependencies: [
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftParser", package: "swift-syntax"),
+        // Operator folding, so ternary / `??` expressions become structured nodes
+        .product(name: "SwiftOperators", package: "swift-syntax"),
         // IndexStore-DB integration (for LCOM4 semantic analysis)
         .product(
           name: "IndexStoreDB", package: "indexstore-db",
