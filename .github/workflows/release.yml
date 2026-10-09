@@ -49,18 +49,25 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             VERSION="${INPUT_VERSION#v}"
-            IS_PRERELEASE="${INPUT_PRERELEASE}"
+            if [[ "$INPUT_PRERELEASE" == "true" ]]; then IS_PRERELEASE=true; else IS_PRERELEASE=false; fi
           else
             VERSION=${GITHUB_REF#refs/tags/v}
-            if [[ $VERSION == *"alpha"* ]] || [[ $VERSION == *"beta"* ]] || [[ $VERSION == *"rc"* ]]; then
-              IS_PRERELEASE=true
-            else
-              IS_PRERELEASE=false
-            fi
+            if [[ "$VERSION" == *-* ]]; then IS_PRERELEASE=true; else IS_PRERELEASE=false; fi
           fi
 
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
             echo "::error::'$VERSION' is not a semantic version (expected e.g. 1.6.0 or 1.6.0-rc1)"
+            exit 1
+          fi
+
+          # A pre-release is skipped by /releases/latest, the v1 tag and the Homebrew bump,
+          # so publishing a final version number as one burns the tag for nothing.
+          if [[ "$IS_PRERELEASE" == "true" && "$VERSION" != *-* ]]; then
+            echo "::error::'$VERSION' was marked as a pre-release but has no pre-release suffix; use e.g. ${VERSION}-rc1, or run again with the box unchecked"
+            exit 1
+          fi
+          if [[ "$IS_PRERELEASE" == "false" && "$VERSION" == *-* ]]; then
+            echo "::error::'$VERSION' has a pre-release suffix but was not marked as a pre-release; it would become the Latest release and move the v1 tag"
             exit 1
           fi
 
