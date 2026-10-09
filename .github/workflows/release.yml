@@ -38,10 +38,13 @@ jobs:
 
       - name: Determine version
         id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_PRERELEASE: ${{ github.event.inputs.prerelease }}
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-            IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
+            VERSION="${INPUT_VERSION#v}"
+            IS_PRERELEASE="${INPUT_PRERELEASE}"
           else
             VERSION=${GITHUB_REF#refs/tags/v}
             if [[ $VERSION == *"alpha"* ]] || [[ $VERSION == *"beta"* ]] || [[ $VERSION == *"rc"* ]]; then
@@ -51,10 +54,40 @@ jobs:
             fi
           fi
 
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::'$VERSION' is not a semantic version (expected e.g. 1.6.0 or 1.6.0-rc1)"
+            exit 1
+          fi
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
           echo "Is pre-release: $IS_PRERELEASE"
+
+      - name: Check that Version.swift declares this version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if ! grep -q "current = \"${VERSION}\"" Sources/SwiftComplexityCore/Version.swift; then
+            echo "::error::Sources/SwiftComplexityCore/Version.swift does not declare ${VERSION}; merge the version bump before releasing"
+            exit 1
+          fi
+
+      - name: Check that CHANGELOG.md describes this version
+        if: steps.version.outputs.is_prerelease == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: python3 .github/scripts/changelog_section.py "$VERSION" > /dev/null
+
+      - name: Refuse to overwrite an existing release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" > /dev/null; then
+            echo "::error::v${VERSION} already exists; a second run would replace its assets and re-point the Homebrew formulae"
+            exit 1
+          fi
 
       - name: Setup Xcode
         if: runner.os == 'macOS'
@@ -314,7 +347,15 @@ jobs:
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
 
-          cat > release_body.md << EOF
+          # The generated notes appended by action-gh-release only list PR titles;
+          # the CHANGELOG section is where users learn that their scores or gates changed.
+          if python3 .github/scripts/changelog_section.py "$VERSION" > highlights.md; then
+            { echo "## Highlights"; echo; cat highlights.md; echo; } > release_body.md
+          else
+            : > release_body.md
+          fi
+
+          cat >> release_body.md << EOF
           ## Installation
 
           ### CLI Tool (SwiftComplexityCLI)
@@ -325,8 +366,8 @@ jobs:
           - **Linux x86_64**: \`SwiftComplexityCLI-${VERSION}-linux-x86_64.tar.gz\`
 
           \`\`\`bash
-          tar -xzf SwiftComplexityCLI-\${VERSION}-*.tar.gz
-          cd SwiftComplexityCLI-\${VERSION}-*
+          tar -xzf SwiftComplexityCLI-${VERSION}-*.tar.gz
+          cd SwiftComplexityCLI-${VERSION}-*
           ./install.sh
           \`\`\`
 
@@ -338,8 +379,8 @@ jobs:
           - **Linux x86_64**: \`SwiftComplexityMCP-${VERSION}-linux-x86_64.tar.gz\`
 
           \`\`\`bash
-          tar -xzf SwiftComplexityMCP-\${VERSION}-*.tar.gz
-          cd SwiftComplexityMCP-\${VERSION}-*
+          tar -xzf SwiftComplexityMCP-${VERSION}-*.tar.gz
+          cd SwiftComplexityMCP-${VERSION}-*
           ./install.sh
           \`\`\`
 
@@ -366,8 +407,8 @@ jobs:
           ## Verification
 
           \`\`\`bash
-          shasum -a 256 -c SwiftComplexityCLI-\${VERSION}-*.tar.gz.sha256
-          shasum -a 256 -c SwiftComplexityMCP-\${VERSION}-*.tar.gz.sha256
+          shasum -a 256 -c SwiftComplexityCLI-${VERSION}-*.tar.gz.sha256
+          shasum -a 256 -c SwiftComplexityMCP-${VERSION}-*.tar.gz.sha256
           shasum -a 256 -c swift-complexity.artifactbundle.zip.sha256
           shasum -a 256 -c swift-complexity-mcp.artifactbundle.zip.sha256
           \`\`\`
