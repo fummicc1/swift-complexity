@@ -133,29 +133,38 @@ class FunctionDetector: SyntaxVisitor {
 
     public override func visit(_ node: AccessorDeclSyntax) -> SyntaxVisitorContinueKind {
         let accessorKind = node.accessorSpecifier.text
+        let owner = accessorOwner(of: node)
 
-        // Try to find parent property name
-        let propertyName = findParentPropertyName(from: node)
-        let name = propertyName.map { "\($0).\(accessorKind)" } ?? accessorKind
-
-        // Build better signature
+        let name: String
         let signature: String
-        if let subscriptDecl = findParentSubscript(from: node) {
-            signature = "\(subscriptSignature(of: subscriptDecl)) { \(accessorKind) }"
-        } else {
-            signature = propertyName.map { "var \($0) { \(accessorKind) }" } ?? accessorKind
+        switch owner {
+        case .subscript(let declaration):
+            name = "subscript.\(accessorKind)"
+            signature = "\(subscriptSignature(of: declaration)) { \(accessorKind) }"
+        case .property(let propertyName, _):
+            name = "\(propertyName).\(accessorKind)"
+            signature = "var \(propertyName) { \(accessorKind) }"
+        case nil:
+            name = accessorKind
+            signature = accessorKind
         }
-        let location = extractLocation(from: node.accessorSpecifier)
+
+        var suppressedMetrics = SuppressionParser.suppressedMetrics(
+            in: node.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
+        if let ownerTrivia = owner?.leadingTrivia {
+            suppressedMetrics.formUnion(
+                SuppressionParser.suppressedMetrics(
+                    in: ownerTrivia, applicableTo: SuppressedMetric.functionLevel))
+        }
 
         let detectedFunction = DetectedFunction(
             name: name,
             signature: signature,
             body: node.body,
-            location: location,
+            location: extractLocation(from: node.accessorSpecifier),
             endLocation: extractEndLocation(from: node),
             enclosingTypeName: enclosingTypeName(of: node),
-            suppressedMetrics: SuppressionParser.suppressedMetrics(
-                in: node.leadingTrivia, applicableTo: SuppressedMetric.functionLevel)
+            suppressedMetrics: suppressedMetrics
         )
 
         detectedFunctions.append(detectedFunction)
@@ -337,34 +346,34 @@ class FunctionDetector: SyntaxVisitor {
         return nil
     }
 
-    private func findParentPropertyName(from node: AccessorDeclSyntax) -> String? {
+    private func accessorOwner(of node: AccessorDeclSyntax) -> AccessorOwner? {
         var current: Syntax? = Syntax(node)
         while let parent = current?.parent {
-            // Accessors of a subscript are named "subscript.get" / "subscript.set".
-            if parent.is(SubscriptDeclSyntax.self) {
-                return "subscript"
+            if let subscriptDecl = parent.as(SubscriptDeclSyntax.self) {
+                return .subscript(subscriptDecl)
             }
-            if let binding = parent.as(PatternBindingSyntax.self),
-                let identifier = binding.pattern.as(IdentifierPatternSyntax.self)
-            {
-                return identifier.identifier.text
+            if let binding = parent.as(PatternBindingSyntax.self) {
+                guard let identifier = binding.pattern.as(IdentifierPatternSyntax.self) else {
+                    return nil
+                }
+                return .property(
+                    name: identifier.identifier.text,
+                    declaration: binding.parent?.parent?.as(VariableDeclSyntax.self))
             }
             current = parent
         }
         return nil
     }
+}
 
-    private func findParentSubscript(from node: AccessorDeclSyntax) -> SubscriptDeclSyntax? {
-        var current: Syntax? = Syntax(node)
-        while let parent = current?.parent {
-            if parent.is(PatternBindingSyntax.self) {
-                return nil
-            }
-            if let subscriptDecl = parent.as(SubscriptDeclSyntax.self) {
-                return subscriptDecl
-            }
-            current = parent
+private enum AccessorOwner {
+    case property(name: String, declaration: VariableDeclSyntax?)
+    case `subscript`(SubscriptDeclSyntax)
+
+    var leadingTrivia: Trivia? {
+        switch self {
+        case .property(_, let declaration): return declaration?.leadingTrivia
+        case .subscript(let declaration): return declaration.leadingTrivia
         }
-        return nil
     }
 }

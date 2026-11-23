@@ -205,4 +205,59 @@ struct SubscriptDetectionTests {
 
         #expect(functions["subscript"]?.suppressedMetrics == [.cyclomatic])
     }
+
+    @Test("A suppression comment above a subscript applies to each of its explicit accessors")
+    func explicitSubscriptAccessorSuppression() async throws {
+        let functions = try await analyze(
+            """
+            struct Grid {
+                var cells: [Int] = []
+                // swift-complexity:disable
+                subscript(i: Int) -> Int {
+                    get { cells[i] }
+                    set { cells[i] = newValue }
+                }
+            }
+            """)
+
+        #expect(functions["subscript.get"]?.suppressedMetrics == [.cyclomatic, .cognitive])
+        #expect(functions["subscript.set"]?.suppressedMetrics == [.cyclomatic, .cognitive])
+    }
+
+    @Test(
+        "A suppression comment above a computed property applies to each of its explicit accessors")
+    func explicitPropertyAccessorSuppression() async throws {
+        let functions = try await analyze(
+            """
+            struct Box {
+                var storage = 0
+                // swift-complexity:disable cognitive
+                var value: Int {
+                    get { storage }
+                    set { storage = newValue }
+                }
+            }
+            """)
+
+        #expect(functions["value.get"]?.suppressedMetrics == [.cognitive])
+        #expect(functions["value.set"]?.suppressedMetrics == [.cognitive])
+    }
+
+    @Test("A suppression comment above one accessor applies to that accessor only")
+    func singleAccessorSuppression() async throws {
+        let functions = try await analyze(
+            """
+            struct Grid {
+                var cells: [Int] = []
+                subscript(i: Int) -> Int {
+                    // swift-complexity:disable cyclomatic
+                    get { cells[i] }
+                    set { cells[i] = newValue }
+                }
+            }
+            """)
+
+        #expect(functions["subscript.get"]?.suppressedMetrics == [.cyclomatic])
+        #expect(try #require(functions["subscript.set"]).suppressedMetrics == nil)
+    }
 }
