@@ -8,20 +8,23 @@ the section for the version being released into the GitHub release as
 
 ### Behavior changes
 
-- Subscripts are now reported. A subscript with a shorthand getter is named
-  `subscript`; explicit accessors are named `subscript.get` / `subscript.set`
-  instead of a bare `get` / `set`. Function counts and averages change for code
-  with subscripts, and a threshold gate can newly fail on one. (#58, #60)
-- A `// swift-complexity:disable` comment above a subscript or computed
-  property with explicit accessors now applies to each accessor. Previously it
-  had to be written above every accessor. (#60)
+- Subscripts with a shorthand getter (`subscript(i: Int) -> T { ... }`) are now
+  reported, named `subscript`. Function counts and averages change for code
+  that has them, and a threshold gate can fail on a subscript that was
+  previously skipped. (#58, #60)
+- Explicit subscript accessors, previously reported as a bare `get` / `set`,
+  are now named `subscript.get` / `subscript.set`. (#58, #60)
+- A `// swift-complexity:disable` comment above a subscript or property whose
+  accessors are written out (`get`/`set`, or `willSet`/`didSet` observers) now
+  applies to each accessor. Previously it had to be written above every
+  accessor. (#60)
 
 ### New features
 
 - JSON and XML output report where each function ends: `endLocation` in JSON,
   `end-line` / `end-column` in XML. The position is just past the closing
-  brace. SARIF and Xcode diagnostics still point at the declaration only.
-  (#58, #60)
+  brace. SARIF and Xcode diagnostics still report only where the declaration
+  starts. (#58, #60)
 
 ## 1.6.0
 

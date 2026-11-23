@@ -243,6 +243,23 @@ struct SubscriptDetectionTests {
         #expect(functions["value.set"]?.suppressedMetrics == [.cognitive])
     }
 
+    @Test("A suppression comment above an observed property applies to each observer")
+    func propertyObserverSuppression() async throws {
+        let functions = try await analyze(
+            """
+            struct Box {
+                // swift-complexity:disable cyclomatic
+                var value = 0 {
+                    willSet { print(newValue) }
+                    didSet { if value > 0 { print(oldValue) } }
+                }
+            }
+            """)
+
+        #expect(functions["value.willSet"]?.suppressedMetrics == [.cyclomatic])
+        #expect(functions["value.didSet"]?.suppressedMetrics == [.cyclomatic])
+    }
+
     @Test("A suppression comment above one accessor applies to that accessor only")
     func singleAccessorSuppression() async throws {
         let functions = try await analyze(
