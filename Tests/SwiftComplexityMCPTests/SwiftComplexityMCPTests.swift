@@ -422,3 +422,61 @@ struct ToolRouterTests {
         #expect(text?.contains("Unknown tool") == true)
     }
 }
+
+// MARK: - Metric Selection (cyclomatic_only / cognitive_only) Tests
+
+@Suite("AnalyzeComplexityHandler metric selection")
+struct AnalyzeComplexityMetricSelectionTests {
+    private func textContent(_ result: CallTool.Result) -> String? {
+        result.content.first.flatMap {
+            if case .text(let t, _, _) = $0 { return t }
+            return nil
+        }
+    }
+
+    private func writeTemp(_ contents: String, ext: String) throws -> String {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swift-complexity-mcp-\(UUID().uuidString).\(ext)")
+        try contents.write(to: url, atomically: true, encoding: .utf8)
+        return url.path
+    }
+
+    @Test("cognitive_only keeps a cyclomatic-only violation out of the threshold filter")
+    func cognitiveOnlyFilters() async throws {
+        // label(): cyclomatic 9, cognitive 1 (issue #53)
+        let swiftSource = """
+            enum Kind { case a, b, c, d, e, f, g, h }
+
+            func label(_ kind: Kind) -> String {
+                switch kind {
+                case .a: return "a"
+                case .b: return "b"
+                case .c: return "c"
+                case .d: return "d"
+                case .e: return "e"
+                case .f: return "f"
+                case .g: return "g"
+                case .h: return "h"
+                }
+            }
+            """
+        let swiftPath = try writeTemp(swiftSource, ext: "swift")
+        defer { try? FileManager.default.removeItem(atPath: swiftPath) }
+
+        let cognitiveOnly = await AnalyzeComplexityHandler.handle([
+            "paths": .array([.string(swiftPath)]),
+            "threshold": .int(9),
+            "cognitive_only": .bool(true),
+        ])
+        let cyclomaticOnly = await AnalyzeComplexityHandler.handle([
+            "paths": .array([.string(swiftPath)]),
+            "threshold": .int(9),
+            "cyclomatic_only": .bool(true),
+        ])
+
+        #expect(cognitiveOnly.isError != true)
+        #expect(textContent(cognitiveOnly)?.contains("label") == false)
+        #expect(cyclomaticOnly.isError != true)
+        #expect(textContent(cyclomaticOnly)?.contains("label") == true)
+    }
+}

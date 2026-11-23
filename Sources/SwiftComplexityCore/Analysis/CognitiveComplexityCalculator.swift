@@ -1,7 +1,9 @@
 import Foundation
 import SwiftSyntax
 
-class CognitiveComplexityCalculator: SyntaxVisitor {
+/// Expects an operator-folded tree (see `ComplexityAnalyzer.foldingOperators(in:)`):
+/// ternaries are only visible as `TernaryExprSyntax` after folding.
+class CognitiveComplexityCalculator: FunctionBodyVisitor {
     private var complexity: Int = 0
     private var nestingLevel: Int = 0
     private var logicalSequenceActive: Bool = false
@@ -168,10 +170,22 @@ class CognitiveComplexityCalculator: SyntaxVisitor {
         return .skipChildren
     }
 
-    // Recursive function calls
-    public override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
-        // This method detects recursive calls within the function body
-        // For now, we skip this complexity as it requires more sophisticated analysis
-        return .visitChildren
+    public override func visit(_ node: IfConfigDeclSyntax) -> SyntaxVisitorContinueKind {
+        let saved = (complexity, logicalSequenceActive, isInElseBody)
+        var maxClauseComplexity = 0
+
+        for clause in node.clauses {
+            guard let elements = clause.elements else { continue }
+            complexity = 0
+            logicalSequenceActive = saved.1
+            isInElseBody = saved.2
+            walk(elements)
+            maxClauseComplexity = max(maxClauseComplexity, complexity)
+        }
+
+        complexity = saved.0 + maxClauseComplexity
+        logicalSequenceActive = saved.1
+        isInElseBody = saved.2
+        return .skipChildren
     }
 }

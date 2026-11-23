@@ -109,8 +109,8 @@ runs:
             ;;
           Linux)
             PLATFORM="linux"
-            if [[ "$ARCH" != "x86_64" ]]; then
-              echo "::error::Linux $ARCH is not supported; only x86_64 binaries are published."
+            if [[ "$ARCH" != "x86_64" && "$ARCH" != "aarch64" ]]; then
+              echo "::error::Linux $ARCH is not supported; only x86_64 and aarch64 binaries are published."
               exit 1
             fi
             ;;

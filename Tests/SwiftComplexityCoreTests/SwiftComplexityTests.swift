@@ -1078,6 +1078,77 @@ struct OutputFormatterTests {
         #expect(!output.contains("simpleFunc"))
     }
 
+    @Test("Xcode diagnostics gate only the metric selected by --cognitive-only")
+    func xcodeDiagnosticsHonorCognitiveOnly() {
+        // Given - cyclomatic reaches the threshold, cognitive does not (issue #53)
+        let functions = [
+            FunctionComplexity(
+                name: "label", signature: "func label()",
+                cyclomaticComplexity: 9, cognitiveComplexity: 1,
+                location: SourceLocation(line: 3, column: 1))
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let cognitiveOnly = formatter.format(
+            results: [result], format: .xcode,
+            options: OutputOptions(showCognitiveOnly: true, threshold: 9))
+        let cyclomaticOnly = formatter.format(
+            results: [result], format: .xcode,
+            options: OutputOptions(showCyclomaticOnly: true, threshold: 9))
+
+        // Then
+        #expect(cognitiveOnly.isEmpty)
+        #expect(cyclomaticOnly.contains("'label'"))
+    }
+
+    @Test("Xcode severity ignores the metric excluded by --cognitive-only")
+    func xcodeSeverityHonorsCognitiveOnly() {
+        // Given - cyclomatic is far past 2x the threshold, cognitive is only past 1x
+        let functions = [
+            FunctionComplexity(
+                name: "mixed", signature: "func mixed()",
+                cyclomaticComplexity: 25, cognitiveComplexity: 12,
+                location: SourceLocation(line: 3, column: 1))
+        ]
+        let result = ComplexityResult(filePath: "test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(
+            results: [result], format: .xcode,
+            options: OutputOptions(showCognitiveOnly: true, threshold: 10))
+
+        // Then
+        #expect(output.contains(": warning: "))
+        #expect(!output.contains(": error: "))
+    }
+
+    @Test("SARIF format reports only the metric selected by --cognitive-only")
+    func sarifFormatHonorsCognitiveOnly() throws {
+        // Given - both metrics exceed the threshold
+        let functions = [
+            FunctionComplexity(
+                name: "complexFunc", signature: "func complexFunc()", cyclomaticComplexity: 11,
+                cognitiveComplexity: 20, location: SourceLocation(line: 12, column: 5))
+        ]
+        let result = ComplexityResult(filePath: "Sources/test.swift", functions: functions)
+        let formatter = OutputFormatter()
+
+        // When
+        let output = formatter.format(
+            results: [result], format: .sarif,
+            options: OutputOptions(showCognitiveOnly: true, threshold: 10))
+
+        // Then
+        let json =
+            try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any] ?? [:]
+        let runs = json["runs"] as? [[String: Any]] ?? []
+        let results = runs.first?["results"] as? [[String: Any]] ?? []
+        #expect(results.map { $0["ruleId"] as? String } == ["cognitive_complexity"])
+    }
+
     @Test("SARIF format is empty without a threshold")
     func sarifFormatWithoutThreshold() throws {
         // Given

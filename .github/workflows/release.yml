@@ -17,6 +17,11 @@ on:
         required: false
         type: boolean
         default: false
+      dry_run:
+        description: "Build and smoke-test the artifacts without publishing anything"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -38,23 +43,63 @@ jobs:
 
       - name: Determine version
         id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_PRERELEASE: ${{ github.event.inputs.prerelease }}
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-            IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
+            VERSION="${INPUT_VERSION#v}"
+            if [[ "$INPUT_PRERELEASE" == "true" ]]; then IS_PRERELEASE=true; else IS_PRERELEASE=false; fi
           else
             VERSION=${GITHUB_REF#refs/tags/v}
-            if [[ $VERSION == *"alpha"* ]] || [[ $VERSION == *"beta"* ]] || [[ $VERSION == *"rc"* ]]; then
-              IS_PRERELEASE=true
-            else
-              IS_PRERELEASE=false
-            fi
+            if [[ "$VERSION" == *-* ]]; then IS_PRERELEASE=true; else IS_PRERELEASE=false; fi
+          fi
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::'$VERSION' is not a semantic version (expected e.g. 1.6.0 or 1.6.0-rc1)"
+            exit 1
+          fi
+
+          # A pre-release is skipped by /releases/latest, the v1 tag and the Homebrew bump,
+          # so publishing a final version number as one burns the tag for nothing.
+          if [[ "$IS_PRERELEASE" == "true" && "$VERSION" != *-* ]]; then
+            echo "::error::'$VERSION' was marked as a pre-release but has no pre-release suffix; use e.g. ${VERSION}-rc1, or run again with the box unchecked"
+            exit 1
+          fi
+          if [[ "$IS_PRERELEASE" == "false" && "$VERSION" == *-* ]]; then
+            echo "::error::'$VERSION' has a pre-release suffix but was not marked as a pre-release; it would become the Latest release and move the v1 tag"
+            exit 1
           fi
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
           echo "Is pre-release: $IS_PRERELEASE"
+
+      - name: Check that Version.swift declares this version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if ! grep -q "current = \"${VERSION}\"" Sources/SwiftComplexityCore/Version.swift; then
+            echo "::error::Sources/SwiftComplexityCore/Version.swift does not declare ${VERSION}; merge the version bump before releasing"
+            exit 1
+          fi
+
+      - name: Check that CHANGELOG.md describes this version
+        if: steps.version.outputs.is_prerelease == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: python3 .github/scripts/changelog_section.py "$VERSION" > /dev/null
+
+      - name: Refuse to overwrite an existing release
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" > /dev/null; then
+            echo "::error::v${VERSION} already exists; a second run would replace its assets and re-point the Homebrew formulae"
+            exit 1
+          fi
 
       - name: Setup Xcode
         if: runner.os == 'macOS'
@@ -105,6 +150,9 @@ jobs:
             platform: macos
           - os: ubuntu-22.04
             arch: x86_64
+            platform: linux
+          - os: ubuntu-22.04-arm
+            arch: aarch64
             platform: linux
     runs-on: ${{ matrix.os }}
 
@@ -176,6 +224,69 @@ jobs:
               -Xcxx -I${TOOLCHAIN_USR}/lib/swift \
               -Xcxx -I${TOOLCHAIN_USR}/lib/swift/Block
           fi
+
+      - name: Smoke-test the binaries
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          CLI=.build/release/SwiftComplexityCLI
+          MCP=.build/release/SwiftComplexityMCP
+
+          if [[ "$(uname -m)" != "$ARCH" ]]; then
+            # A cross-built macOS slice cannot run on this host; check its architecture instead.
+            lipo -archs "$CLI" | grep -qw "$ARCH"
+            lipo -archs "$MCP" | grep -qw "$ARCH"
+            echo "Built for $ARCH on $(uname -m); runtime checks skipped"
+            exit 0
+          fi
+
+          REPORTED=$("$CLI" --version)
+          if [[ "$REPORTED" != "$VERSION" && "$REPORTED" != "swift-complexity v${VERSION}" ]]; then
+            echo "::error::SwiftComplexityCLI --version printed '${REPORTED}', expected ${VERSION}"
+            exit 1
+          fi
+
+          "$CLI" Tests/SwiftComplexityCoreTests/Fixtures --format json --recursive > smoke.json
+          jq -e '.files | length > 0' smoke.json > /dev/null
+
+          # Without the IndexStore trait --lcom4 answers with a "--traits IndexStore" rebuild hint,
+          # which is exactly what a release binary must never do.
+          set +e
+          LCOM4_OUTPUT=$("$CLI" Tests/SwiftComplexityCoreTests/Fixtures --lcom4 --index-store-path /nonexistent 2>&1)
+          set -e
+          if grep -q -- "--traits IndexStore" <<< "$LCOM4_OUTPUT"; then
+            echo "::error::SwiftComplexityCLI was built without the IndexStore trait"
+            echo "$LCOM4_OUTPUT"
+            exit 1
+          fi
+
+          INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"release-smoke","version":"0"}}}'
+          MCP_OUTPUT=$(printf '%s\n' "$INIT" | perl -e 'alarm 15; exec @ARGV' -- "$MCP" 2>/dev/null || true)
+          if ! grep '"serverInfo"' <<< "$MCP_OUTPUT" | head -1 \
+              | jq -e --arg v "$VERSION" '.result.serverInfo.version == $v' > /dev/null; then
+            echo "::error::SwiftComplexityMCP did not answer initialize with version ${VERSION}"
+            echo "$MCP_OUTPUT"
+            exit 1
+          fi
+
+      - name: Smoke-test the Linux binary in a bare container
+        if: runner.os == 'Linux'
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          # --static-swift-stdlib promises binaries that run without a Swift runtime;
+          # the runner image has one installed, so a stock image is the real test.
+          docker run --rm \
+            -v "$(readlink -f .build/release):/release:ro" \
+            -v "${PWD}/Tests/SwiftComplexityCoreTests/Fixtures:/fixtures:ro" \
+            -e VERSION \
+            ubuntu:22.04 \
+            sh -ec '
+              REPORTED=$(/release/SwiftComplexityCLI --version)
+              [ "$REPORTED" = "$VERSION" ] || [ "$REPORTED" = "swift-complexity v$VERSION" ]
+              /release/SwiftComplexityCLI /fixtures --format json --recursive > /dev/null
+            '
 
       - name: Create archive
         run: |
@@ -261,7 +372,7 @@ jobs:
             local ARTIFACT_NAME="$2" # e.g. swift-complexity
             local BUNDLE_DIR="artifacts/${ARTIFACT_NAME}.artifactbundle"
 
-            for VARIANT in macos-arm64 macos-x86_64 linux-x86_64; do
+            for VARIANT in macos-arm64 macos-x86_64 linux-x86_64 linux-aarch64; do
               mkdir -p "${BUNDLE_DIR}/${ARTIFACT_NAME}-${VERSION}-${VARIANT}/bin"
               tar -xzf "artifacts/${PRODUCT}-${VERSION}-${VARIANT}.tar.gz" -C /tmp
               cp "/tmp/${PRODUCT}-${VERSION}-${VARIANT}/${PRODUCT}" \
@@ -290,6 +401,10 @@ jobs:
                       {
                         path: "\($name)-\($version)-linux-x86_64/bin/\($name)",
                         supportedTriples: ["x86_64-unknown-linux-gnu"]
+                      },
+                      {
+                        path: "\($name)-\($version)-linux-aarch64/bin/\($name)",
+                        supportedTriples: ["aarch64-unknown-linux-gnu"]
                       }
                     ]
                   }
@@ -314,7 +429,15 @@ jobs:
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
 
-          cat > release_body.md << EOF
+          # The generated notes appended by action-gh-release only list PR titles;
+          # the CHANGELOG section is where users learn that their scores or gates changed.
+          if python3 .github/scripts/changelog_section.py "$VERSION" > highlights.md; then
+            { echo "## Highlights"; echo; cat highlights.md; echo; } > release_body.md
+          else
+            : > release_body.md
+          fi
+
+          cat >> release_body.md << EOF
           ## Installation
 
           ### CLI Tool (SwiftComplexityCLI)
@@ -323,10 +446,11 @@ jobs:
           - **macOS Apple Silicon (M1/M2/M3)**: \`SwiftComplexityCLI-${VERSION}-macos-arm64.tar.gz\`
           - **macOS Intel**: \`SwiftComplexityCLI-${VERSION}-macos-x86_64.tar.gz\`
           - **Linux x86_64**: \`SwiftComplexityCLI-${VERSION}-linux-x86_64.tar.gz\`
+          - **Linux arm64**: \`SwiftComplexityCLI-${VERSION}-linux-aarch64.tar.gz\`
 
           \`\`\`bash
-          tar -xzf SwiftComplexityCLI-\${VERSION}-*.tar.gz
-          cd SwiftComplexityCLI-\${VERSION}-*
+          tar -xzf SwiftComplexityCLI-${VERSION}-*.tar.gz
+          cd SwiftComplexityCLI-${VERSION}-*
           ./install.sh
           \`\`\`
 
@@ -336,10 +460,11 @@ jobs:
           - **macOS Apple Silicon (M1/M2/M3)**: \`SwiftComplexityMCP-${VERSION}-macos-arm64.tar.gz\`
           - **macOS Intel**: \`SwiftComplexityMCP-${VERSION}-macos-x86_64.tar.gz\`
           - **Linux x86_64**: \`SwiftComplexityMCP-${VERSION}-linux-x86_64.tar.gz\`
+          - **Linux arm64**: \`SwiftComplexityMCP-${VERSION}-linux-aarch64.tar.gz\`
 
           \`\`\`bash
-          tar -xzf SwiftComplexityMCP-\${VERSION}-*.tar.gz
-          cd SwiftComplexityMCP-\${VERSION}-*
+          tar -xzf SwiftComplexityMCP-${VERSION}-*.tar.gz
+          cd SwiftComplexityMCP-${VERSION}-*
           ./install.sh
           \`\`\`
 
@@ -366,8 +491,8 @@ jobs:
           ## Verification
 
           \`\`\`bash
-          shasum -a 256 -c SwiftComplexityCLI-\${VERSION}-*.tar.gz.sha256
-          shasum -a 256 -c SwiftComplexityMCP-\${VERSION}-*.tar.gz.sha256
+          shasum -a 256 -c SwiftComplexityCLI-${VERSION}-*.tar.gz.sha256
+          shasum -a 256 -c SwiftComplexityMCP-${VERSION}-*.tar.gz.sha256
           shasum -a 256 -c swift-complexity.artifactbundle.zip.sha256
           shasum -a 256 -c swift-complexity-mcp.artifactbundle.zip.sha256
           \`\`\`
@@ -377,6 +502,7 @@ jobs:
           cat release_body.md
 
       - name: Create release
+        if: github.event.inputs.dry_run != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.validate.outputs.version }}
@@ -395,7 +521,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate, create-release]
     # Prereleases must not move the major tag users pin actions to.
-    if: needs.validate.outputs.is_prerelease == 'false'
+    if: needs.validate.outputs.is_prerelease == 'false' && github.event.inputs.dry_run != 'true'
     permissions:
       contents: write
 
@@ -419,7 +545,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate, create-release]
     # Prereleases must not bump the user-facing tap formula.
-    if: needs.validate.outputs.is_prerelease == 'false'
+    if: needs.validate.outputs.is_prerelease == 'false' && github.event.inputs.dry_run != 'true'
 
     steps:
       - name: Checkout code
@@ -479,9 +605,14 @@ jobs:
 
     steps:
       - name: Notify on success
-        if: needs.create-release.result == 'success'
+        if: needs.create-release.result == 'success' && github.event.inputs.dry_run != 'true'
         run: |
           echo "✅ Release v${{ needs.validate.outputs.version }} created successfully!"
+
+      - name: Report dry run
+        if: needs.create-release.result == 'success' && github.event.inputs.dry_run == 'true'
+        run: |
+          echo "Dry run for v${{ needs.validate.outputs.version }} passed: artifacts built and smoke-tested, nothing published."
 
       - name: Notify on failure
         if: needs.create-release.result == 'failure'
