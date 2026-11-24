@@ -48,6 +48,8 @@ jobs:
           echo "- Configuration files: $CONFIG_FILES"
 
       - name: Comment PR analysis
+        # A fork PR's GITHUB_TOKEN is read-only, so the comment POST returns 403 and fails this required check.
+        if: github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v8
         with:
           script: |
