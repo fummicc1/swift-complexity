@@ -5,6 +5,11 @@ feature (generated at commit `6aa21d0`, the `feature/coupling-metrics` branch
 point). The regression test asserts that analysis without `--coupling` still
 produces semantically identical output.
 
+The goldens were later regenerated once to add the optional `endLocation`
+field to every function. That regeneration was checked to be purely additive:
+deleting every `endLocation` key from the new files yields the original
+goldens exactly.
+
 ## Comparison contract
 
 Raw output bytes are NOT comparable: `JSONEncoder` emits object keys in a

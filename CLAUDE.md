@@ -55,7 +55,7 @@ swift-complexity is a CLI tool that analyzes Swift code complexity using SwiftSy
 - **ComplexityAnalyzer**: Main analysis engine (Actor design)
 - **CyclomaticComplexityCalculator**: Cyclomatic complexity calculation (SyntaxVisitor)
 - **CognitiveComplexityCalculator**: Cognitive complexity calculation (considers nesting)
-- **FunctionDetector**: Function/method detection (includes initializers, deinitializers, accessors)
+- **FunctionDetector**: Function/method detection (includes initializers, deinitializers, accessors, subscripts)
 - **FileProcessor**: File/directory processing (TaskGroup parallel processing)
 - **OutputFormatter**: Three output formats (text/json/xml)
 

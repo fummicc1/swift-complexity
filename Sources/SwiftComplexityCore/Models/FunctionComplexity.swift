@@ -42,6 +42,11 @@ public struct FunctionComplexity: Codable, Hashable, Sendable {
     /// Location in source code
     public let location: SourceLocation
 
+    /// End of the declaration (its closing brace). Together with `location`
+    /// this gives the function's line range, e.g. for mapping coverage data.
+    /// Optional for backward compatibility with previously encoded results.
+    public let endLocation: SourceLocation?
+
     /// Name of the nearest enclosing nominal type (class/struct/enum/actor) or the
     /// extended type for extensions. `nil` for free (top-level) functions.
     ///
@@ -61,6 +66,7 @@ public struct FunctionComplexity: Codable, Hashable, Sendable {
         cyclomaticComplexity: Int,
         cognitiveComplexity: Int,
         location: SourceLocation,
+        endLocation: SourceLocation? = nil,
         enclosingTypeName: String? = nil,
         suppressedMetrics: Set<SuppressedMetric>? = nil
     ) {
@@ -69,6 +75,7 @@ public struct FunctionComplexity: Codable, Hashable, Sendable {
         self.cyclomaticComplexity = cyclomaticComplexity
         self.cognitiveComplexity = cognitiveComplexity
         self.location = location
+        self.endLocation = endLocation
         self.enclosingTypeName = enclosingTypeName
         self.suppressedMetrics = suppressedMetrics
     }

@@ -57,6 +57,10 @@ Structured data format for tool integration and programmatic processing.
           "location": {
             "line": "number",
             "column": "number"
+          },
+          "endLocation": {
+            "line": "number",
+            "column": "number"
           }
         }
       ],
@@ -90,6 +94,10 @@ Structured data format for tool integration and programmatic processing.
           "location": {
             "line": 15,
             "column": 5
+          },
+          "endLocation": {
+            "line": 28,
+            "column": 6
           }
         },
         {
@@ -100,6 +108,10 @@ Structured data format for tool integration and programmatic processing.
           "location": {
             "line": 32,
             "column": 5
+          },
+          "endLocation": {
+            "line": 41,
+            "column": 6
           }
         }
       ],
@@ -116,6 +128,13 @@ Structured data format for tool integration and programmatic processing.
   ]
 }
 ```
+
+`location` is where the declaration starts (its `func`, `init`, `subscript`,
+or accessor keyword, or a computed property's name). `endLocation` is the
+position just past the declaration's closing brace; together they give the
+function's line range, for example to map coverage data onto functions. Both
+are 1-based. `endLocation` is optional: results encoded before it existed
+decode without it.
 
 With `--lcom4`, each file additionally carries `classCohesions` and
 `cohesionSummary`; with `--coupling`, `typeCouplings` (name, kind, `fanIn`,
@@ -168,7 +187,7 @@ Structured XML format for integration with reporting tools and IDEs.
 <?xml version="1.0" encoding="UTF-8"?>
 <complexity-report>
   <file path="string">
-    <function name="string" signature="string" line="number" column="number">
+    <function name="string" signature="string" line="number" column="number" end-line="number" end-column="number">
       <cyclomatic-complexity>number</cyclomatic-complexity>
       <cognitive-complexity>number</cognitive-complexity>
     </function>
@@ -191,13 +210,13 @@ Structured XML format for integration with reporting tools and IDEs.
   <file path="Sources/Calculator.swift">
     <function name="calculateTotal()" 
               signature="func calculateTotal(items: [Item]) -> Double"
-              line="15" column="5">
+              line="15" column="5" end-line="28" end-column="6">
       <cyclomatic-complexity>5</cyclomatic-complexity>
       <cognitive-complexity>7</cognitive-complexity>
     </function>
     <function name="validateInput()"
               signature="func validateInput(_ input: String) -> Bool" 
-              line="32" column="5">
+              line="32" column="5" end-line="41" end-column="6">
       <cyclomatic-complexity>3</cyclomatic-complexity>
       <cognitive-complexity>4</cognitive-complexity>
     </function>

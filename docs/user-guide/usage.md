@@ -144,8 +144,8 @@ swift run swift-complexity Sources --recursive --config config/complexity.yml
 
 When a declaration's complexity is unavoidable and reviewed on purpose, add a
 `// swift-complexity:disable` comment directly above it. The comment works on
-function-level declarations (function, initializer, deinitializer, or computed
-property) for `cyclomatic`/`cognitive`, and on type declarations
+function-level declarations (function, initializer, deinitializer, subscript,
+or computed property) for `cyclomatic`/`cognitive`, and on type declarations
 (class/struct/actor) for `lcom4`. There is no separate "disable next line" form
 and no matching "enable" comment — the comment always applies to exactly the
 one declaration it immediately precedes.
@@ -175,6 +175,9 @@ class LegacyOrderManager {
   declaration itself**: `cyclomatic` and `cognitive` on a function,
   `lcom4` on a type. A bare disable above a type never cascades to its
   member functions — suppress each function individually if needed.
+- Above a subscript or property whose accessors are written out (`get`/`set`,
+  or `willSet`/`didSet` observers), the comment applies to each accessor. A
+  comment directly above one accessor applies to that accessor only.
 - Naming specific metrics (`cyclomatic`, `cognitive`, `lcom4`, space- or
   comma-separated) suppresses only those, leaving the others checked as usual.
 - A metric name that does not apply to the declaration level (e.g. `lcom4`

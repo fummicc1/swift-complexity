@@ -76,6 +76,7 @@ public actor ComplexityAnalyzer: ComplexityAnalyzing {
                 cyclomaticComplexity: cyclomaticComplexity,
                 cognitiveComplexity: cognitiveComplexity,
                 location: function.location,
+                endLocation: function.endLocation,
                 enclosingTypeName: function.enclosingTypeName,
                 suppressedMetrics: function.suppressedMetrics.isEmpty
                     ? nil : function.suppressedMetrics

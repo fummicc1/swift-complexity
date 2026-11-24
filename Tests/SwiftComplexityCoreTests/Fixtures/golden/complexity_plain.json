@@ -7,6 +7,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "TestClass",
+          "endLocation": {
+            "column": 6,
+            "line": 8
+          },
           "location": {
             "column": 5,
             "line": 6
@@ -18,6 +22,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "TestClass",
+          "endLocation": {
+            "column": 6,
+            "line": 12
+          },
           "location": {
             "column": 5,
             "line": 10
@@ -29,6 +37,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "TestClass",
+          "endLocation": {
+            "column": 6,
+            "line": 16
+          },
           "location": {
             "column": 5,
             "line": 14
@@ -53,6 +65,10 @@
         {
           "cognitiveComplexity": 3,
           "cyclomaticComplexity": 3,
+          "endLocation": {
+            "column": 2,
+            "line": 11
+          },
           "location": {
             "column": 1,
             "line": 5
@@ -78,6 +94,10 @@
           "cognitiveComplexity": 3,
           "cyclomaticComplexity": 3,
           "enclosingTypeName": "ComputedPropertyExample",
+          "endLocation": {
+            "column": 6,
+            "line": 14
+          },
           "location": {
             "column": 9,
             "line": 4
@@ -89,6 +109,10 @@
           "cognitiveComplexity": 1,
           "cyclomaticComplexity": 2,
           "enclosingTypeName": "ComputedPropertyExample",
+          "endLocation": {
+            "column": 10,
+            "line": 26
+          },
           "location": {
             "column": 9,
             "line": 21
@@ -100,6 +124,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "ComputedPropertyExample",
+          "endLocation": {
+            "column": 10,
+            "line": 29
+          },
           "location": {
             "column": 9,
             "line": 27
@@ -111,6 +139,10 @@
           "cognitiveComplexity": 1,
           "cyclomaticComplexity": 2,
           "enclosingTypeName": "ComputedPropertyExample",
+          "endLocation": {
+            "column": 10,
+            "line": 39
+          },
           "location": {
             "column": 9,
             "line": 35
@@ -135,6 +167,10 @@
         {
           "cognitiveComplexity": 3,
           "cyclomaticComplexity": 3,
+          "endLocation": {
+            "column": 2,
+            "line": 14
+          },
           "location": {
             "column": 1,
             "line": 6
@@ -159,6 +195,10 @@
         {
           "cognitiveComplexity": 1,
           "cyclomaticComplexity": 2,
+          "endLocation": {
+            "column": 2,
+            "line": 9
+          },
           "location": {
             "column": 1,
             "line": 5
@@ -183,6 +223,10 @@
         {
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
+          "endLocation": {
+            "column": 2,
+            "line": 8
+          },
           "location": {
             "column": 1,
             "line": 6
@@ -193,6 +237,10 @@
         {
           "cognitiveComplexity": 5,
           "cyclomaticComplexity": 3,
+          "endLocation": {
+            "column": 2,
+            "line": 20
+          },
           "location": {
             "column": 1,
             "line": 10
@@ -217,6 +265,10 @@
         {
           "cognitiveComplexity": 46,
           "cyclomaticComplexity": 14,
+          "endLocation": {
+            "column": 2,
+            "line": 54
+          },
           "location": {
             "column": 1,
             "line": 6
@@ -241,6 +293,10 @@
         {
           "cognitiveComplexity": 5,
           "cyclomaticComplexity": 3,
+          "endLocation": {
+            "column": 2,
+            "line": 15
+          },
           "location": {
             "column": 1,
             "line": 5
@@ -279,6 +335,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "P",
+          "endLocation": {
+            "column": 18,
+            "line": 9
+          },
           "location": {
             "column": 5,
             "line": 9
@@ -303,6 +363,10 @@
         {
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
+          "endLocation": {
+            "column": 2,
+            "line": 7
+          },
           "location": {
             "column": 1,
             "line": 5
@@ -327,6 +391,10 @@
         {
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
+          "endLocation": {
+            "column": 2,
+            "line": 8
+          },
           "location": {
             "column": 1,
             "line": 6
@@ -351,6 +419,10 @@
         {
           "cognitiveComplexity": 2,
           "cyclomaticComplexity": 3,
+          "endLocation": {
+            "column": 2,
+            "line": 13
+          },
           "location": {
             "column": 1,
             "line": 6
@@ -365,6 +437,10 @@
         {
           "cognitiveComplexity": 2,
           "cyclomaticComplexity": 3,
+          "endLocation": {
+            "column": 2,
+            "line": 23
+          },
           "location": {
             "column": 1,
             "line": 16
@@ -378,6 +454,10 @@
         {
           "cognitiveComplexity": 2,
           "cyclomaticComplexity": 3,
+          "endLocation": {
+            "column": 2,
+            "line": 35
+          },
           "location": {
             "column": 1,
             "line": 28
@@ -391,6 +471,10 @@
         {
           "cognitiveComplexity": 2,
           "cyclomaticComplexity": 3,
+          "endLocation": {
+            "column": 2,
+            "line": 45
+          },
           "location": {
             "column": 1,
             "line": 38
@@ -401,6 +485,10 @@
         {
           "cognitiveComplexity": 2,
           "cyclomaticComplexity": 3,
+          "endLocation": {
+            "column": 2,
+            "line": 57
+          },
           "location": {
             "column": 1,
             "line": 50
@@ -412,6 +500,10 @@
           "cognitiveComplexity": 3,
           "cyclomaticComplexity": 3,
           "enclosingTypeName": "SuppressedComputedProperty",
+          "endLocation": {
+            "column": 6,
+            "line": 68
+          },
           "location": {
             "column": 9,
             "line": 61
@@ -441,6 +533,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "BareSuppressedClass",
+          "endLocation": {
+            "column": 27,
+            "line": 9
+          },
           "location": {
             "column": 5,
             "line": 9
@@ -452,6 +548,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "BareSuppressedClass",
+          "endLocation": {
+            "column": 27,
+            "line": 10
+          },
           "location": {
             "column": 5,
             "line": 10
@@ -463,6 +563,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "Lcom4SuppressedStruct",
+          "endLocation": {
+            "column": 29,
+            "line": 17
+          },
           "location": {
             "column": 5,
             "line": 17
@@ -474,6 +578,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "Lcom4SuppressedStruct",
+          "endLocation": {
+            "column": 29,
+            "line": 18
+          },
           "location": {
             "column": 5,
             "line": 18
@@ -485,6 +593,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "NotSuppressedActor",
+          "endLocation": {
+            "column": 27,
+            "line": 25
+          },
           "location": {
             "column": 5,
             "line": 25
@@ -496,6 +608,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "NotSuppressedActor",
+          "endLocation": {
+            "column": 27,
+            "line": 26
+          },
           "location": {
             "column": 5,
             "line": 26
@@ -507,6 +623,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "WrongLevelMetricClass",
+          "endLocation": {
+            "column": 27,
+            "line": 34
+          },
           "location": {
             "column": 5,
             "line": 34
@@ -518,6 +638,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "WrongLevelMetricClass",
+          "endLocation": {
+            "column": 27,
+            "line": 35
+          },
           "location": {
             "column": 5,
             "line": 35
@@ -529,6 +653,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "TypoedMetricClass",
+          "endLocation": {
+            "column": 27,
+            "line": 43
+          },
           "location": {
             "column": 5,
             "line": 43
@@ -540,6 +668,10 @@
           "cognitiveComplexity": 0,
           "cyclomaticComplexity": 1,
           "enclosingTypeName": "TypoedMetricClass",
+          "endLocation": {
+            "column": 27,
+            "line": 44
+          },
           "location": {
             "column": 5,
             "line": 44
@@ -564,6 +696,10 @@
         {
           "cognitiveComplexity": 14,
           "cyclomaticComplexity": 5,
+          "endLocation": {
+            "column": 2,
+            "line": 23
+          },
           "location": {
             "column": 1,
             "line": 5
