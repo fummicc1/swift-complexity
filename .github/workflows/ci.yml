@@ -353,7 +353,8 @@ jobs:
           path: complexity-report.json
 
       - name: Comment complexity results on PR
-        if: github.event_name == 'pull_request'
+        # A fork PR's GITHUB_TOKEN is read-only, so the comment POST returns 403 and fails this required check.
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v8
         with:
           script: |
